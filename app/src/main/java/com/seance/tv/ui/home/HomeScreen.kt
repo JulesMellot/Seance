@@ -5,8 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -77,10 +79,11 @@ fun HomeScreen(
     var heroFocused by remember { mutableStateOf(false) }
     var focusedRowIndex by remember { mutableStateOf(-1) }  // index LazyColumn de la rangée active
 
-    // Dès que le hero (ses CTA) reçoit le focus, on colle le scroll en haut (instantané)
-    // pour revoir le hero en entier — sinon le « bring-into-view » du bouton recadre en bas.
+    // Quand le hero (ses CTA) reçoit le focus, il (re)devient l'item « à la une » et on
+    // recolle les lignes en haut.
     LaunchedEffect(heroFocused) {
         if (heroFocused) {
+            viewModel.onItemFocused(null)
             focusedRowIndex = -1
             listState.scrollToItem(0)
         }
@@ -144,117 +147,127 @@ fun HomeScreen(
             }
             uiState.error != null && uiState.rows.isEmpty() -> ErrorState(uiState.error!!)
             else -> {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    item {
-                        val hero = uiState.heroItem
-                        if (hero != null) {
-                            val resume = (hero.viewOffset ?: 0) > 0
-                            // Quand le hero (ses CTA) reçoit le focus, on défile tout en haut
-                            // pour le revoir en entier (sinon on ne verrait que les boutons).
-                            HeroSection(
-                                item = hero,
-                                artUrl = viewModel.imageUrl(hero.art ?: hero.thumb),
-                                accent = accent,
-                                eyebrow = if (resume) "REPRENDRE" else "À LA UNE",
-                                onPlay = { play(hero) },
-                                onDetails = { openDetail(hero) },
-                                playFocusRequester = heroFocus,
-                                buildImageUrl = { viewModel.imageUrl(it) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillParentMaxHeight(0.82f)   // peek de la 1ère ligne en bas
-                                    .onFocusChanged { heroFocused = it.hasFocus }
-                            )
-                        } else {
-                            Spacer(Modifier.fillMaxWidth().fillParentMaxHeight())
+                // Phase 2 : hero ÉPINGLÉ (toujours visible) qui reflète l'item focalisé,
+                // les lignes scrollent dans la zone du bas.
+                val displayedHero = uiState.focusedItem ?: uiState.heroItem
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (displayedHero != null) {
+                        val isFeatured = uiState.focusedItem == null
+                        val eyebrow = when {
+                            !isFeatured -> when {
+                                displayedHero.isMovie -> "FILM"
+                                displayedHero.isShow -> "SÉRIE"
+                                else -> "À DÉCOUVRIR"
+                            }
+                            (displayedHero.viewOffset ?: 0) > 0 -> "REPRENDRE"
+                            else -> "À LA UNE"
                         }
-                    }
-
-                    itemsIndexed(uiState.rows, key = { _, row ->
-                        when (row) {
-                            is HomeRow.OnDeck -> "on_deck"
-                            is HomeRow.Collection -> "col_${row.collectionKey}"
-                            is HomeRow.RecentlyAdded -> "recently_added"
-                            is HomeRow.Genre -> "genre_${row.title}"
-                        }
-                    }) { index, row ->
-                        val listIndex = index + 1   // le hero occupe l'index 0
-                        val active = focusedRowIndex == listIndex
-                        val onFocus: (MediaItem) -> Unit = { item ->
-                            viewModel.onItemFocused(item)
-                            focusedRowIndex = listIndex
-                        }
-                        Spacer(Modifier.height(Dimens.rowGap))
-                        when (row) {
-                            is HomeRow.OnDeck -> RowSection(
-                                title = "Continuer à regarder",
-                                items = row.items,
-                                aspect = CardAspect.LANDSCAPE,
-                                accentColor = accent,
-                                active = active,
-                                buildImageUrl = { viewModel.imageUrl(it.thumb) },
-                                onItemClick = ::openDetail,
-                                onItemFocus = onFocus
-                            )
-                            is HomeRow.Collection -> RowSection(
-                                title = row.title,
-                                items = row.items,
-                                aspect = CardAspect.PORTRAIT,
-                                accentColor = accent,
-                                active = active,
-                                buildImageUrl = { viewModel.imageUrl(it.thumb) },
-                                onItemClick = ::openDetail,
-                                onItemFocus = onFocus
-                            )
-                            is HomeRow.RecentlyAdded -> RowSection(
-                                title = "Nouveautés",
-                                items = row.items.take(10),
-                                aspect = CardAspect.PORTRAIT,
-                                numbered = true,
-                                accentColor = accent,
-                                active = active,
-                                buildImageUrl = { viewModel.imageUrl(it.thumb) },
-                                onItemClick = ::openDetail,
-                                onItemFocus = onFocus
-                            )
-                            is HomeRow.Genre -> RowSection(
-                                title = row.title,
-                                items = row.items,
-                                aspect = CardAspect.PORTRAIT,
-                                accentColor = accent,
-                                active = active,
-                                buildImageUrl = { viewModel.imageUrl(it.thumb) },
-                                onItemClick = ::openDetail,
-                                onItemFocus = onFocus
-                            )
-                        }
-                    }
-
-                    item {
-                        Spacer(Modifier.height(Dimens.rowGap + 8.dp))
-                        DiscoverMoreButton(
+                        HeroSection(
+                            item = displayedHero,
+                            artUrl = viewModel.imageUrl(displayedHero.art ?: displayedHero.thumb),
                             accent = accent,
-                            onClick = { viewModel.discoverMore() }
+                            eyebrow = eyebrow,
+                            // Les CTA n'agissent que lorsque le hero a le focus → item à la une.
+                            onPlay = { (uiState.heroItem ?: displayedHero).let(::play) },
+                            onDetails = { (uiState.heroItem ?: displayedHero).let(::openDetail) },
+                            playFocusRequester = heroFocus,
+                            buildImageUrl = { viewModel.imageUrl(it) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.60f)
+                                .onFocusChanged { heroFocused = it.hasFocus }
                         )
-                        Spacer(Modifier.height(56.dp))
+                    }
+
+                    // Zone des lignes (scroll) + fondu en haut
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                            itemsIndexed(uiState.rows, key = { _, row ->
+                                when (row) {
+                                    is HomeRow.OnDeck -> "on_deck"
+                                    is HomeRow.Collection -> "col_${row.collectionKey}"
+                                    is HomeRow.RecentlyAdded -> "recently_added"
+                                    is HomeRow.Genre -> "genre_${row.title}"
+                                }
+                            }) { index, row ->
+                                val active = focusedRowIndex == index
+                                val onFocus: (MediaItem) -> Unit = { item ->
+                                    viewModel.onItemFocused(item)
+                                    focusedRowIndex = index
+                                }
+                                Spacer(Modifier.height(Dimens.rowGap))
+                                when (row) {
+                                    is HomeRow.OnDeck -> RowSection(
+                                        title = "Continuer à regarder",
+                                        items = row.items,
+                                        aspect = CardAspect.LANDSCAPE,
+                                        accentColor = accent,
+                                        active = active,
+                                        buildImageUrl = { viewModel.imageUrl(it.thumb) },
+                                        onItemClick = ::openDetail,
+                                        onItemFocus = onFocus
+                                    )
+                                    is HomeRow.Collection -> RowSection(
+                                        title = row.title,
+                                        items = row.items,
+                                        aspect = CardAspect.PORTRAIT,
+                                        accentColor = accent,
+                                        active = active,
+                                        buildImageUrl = { viewModel.imageUrl(it.thumb) },
+                                        onItemClick = ::openDetail,
+                                        onItemFocus = onFocus
+                                    )
+                                    is HomeRow.RecentlyAdded -> RowSection(
+                                        title = "Nouveautés",
+                                        items = row.items.take(10),
+                                        aspect = CardAspect.PORTRAIT,
+                                        numbered = true,
+                                        accentColor = accent,
+                                        active = active,
+                                        buildImageUrl = { viewModel.imageUrl(it.thumb) },
+                                        onItemClick = ::openDetail,
+                                        onItemFocus = onFocus
+                                    )
+                                    is HomeRow.Genre -> RowSection(
+                                        title = row.title,
+                                        items = row.items,
+                                        aspect = CardAspect.PORTRAIT,
+                                        accentColor = accent,
+                                        active = active,
+                                        buildImageUrl = { viewModel.imageUrl(it.thumb) },
+                                        onItemClick = ::openDetail,
+                                        onItemFocus = onFocus
+                                    )
+                                }
+                            }
+
+                            item {
+                                Spacer(Modifier.height(Dimens.rowGap + 8.dp))
+                                DiscoverMoreButton(
+                                    accent = accent,
+                                    onClick = { viewModel.discoverMore() }
+                                )
+                                Spacer(Modifier.height(56.dp))
+                            }
+                        }
+
+                        // Fondu en haut : les lignes fondent en remontant sous le hero.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to BackgroundBase,
+                                        1f to Color.Transparent
+                                    )
+                                )
+                        )
                     }
                 }
             }
         }
-
-        // Fondu en haut : les lignes (et le hero) fondent en remontant au scroll.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth()
-                .height(72.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to BackgroundBase,
-                        1f to Color.Transparent
-                    )
-                )
-        )
     }
 }
 
