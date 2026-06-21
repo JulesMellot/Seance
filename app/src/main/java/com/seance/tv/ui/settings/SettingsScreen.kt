@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -126,9 +127,54 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         Spacer(Modifier.height(32.dp))
         SectionLabel("Compte")
         Spacer(Modifier.height(12.dp))
+        if (state.multipleProfiles) {
+            AccountAction(
+                icon = Icons.Filled.SwitchAccount,
+                label = "Changer de profil",
+                modifier = Modifier.fillMaxWidth(0.6f),
+                onClick = { (context as? Activity)?.recreate() }
+            )
+            Spacer(Modifier.height(10.dp))
+        }
         LogoutButton(
             modifier = Modifier.fillMaxWidth(0.6f),
             onClick = { viewModel.logout { (context as? Activity)?.recreate() } }
+        )
+    }
+}
+
+@Composable
+private fun AccountAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = modifier
+            .height(56.dp)
+            .clip(RoundedCornerShape(Radii.card))
+            .background(if (focused) SurfaceFocused else Surface)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (focused) TextPrimary else TextSecondary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(14.dp))
+        Text(
+            text = label,
+            fontFamily = SoraFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+            color = TextPrimary
         )
     }
 }

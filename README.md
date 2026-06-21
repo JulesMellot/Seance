@@ -34,7 +34,7 @@ The current player is a minimal MVP. It will be replaced by a **libmpv-based pla
 - [x] **Multi-server selection** — Settings lists the account's Plex servers; switching persists the URL and restarts.
 - [x] **Voice search** — mic button in search via Android TV `RecognizerIntent` (shown only when recognition is available).
 - [x] **Recent searches** — persisted, shown as chips when the field is empty.
-- [ ] **Plex user profiles** ("who's watching") — Plex Home users + PIN switch. *Largest item: reshapes the auth/startup flow + per-user token.*
+- [x] **Plex user profiles** ("who's watching") — Home users grid at startup, PIN entry for protected profiles, per-server access token, "switch profile" in Settings.
 - [ ] **Remove from "Continue watching"** — needs a TV long-press context menu + Plex API.
 - [ ] **Advanced Browse filters** — year, resolution (genre + sort + unwatched already done).
 - [ ] **Shared-element transition** list → detail (fade is done).

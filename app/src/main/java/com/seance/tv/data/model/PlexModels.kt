@@ -12,6 +12,30 @@ data class PinResponse(
     @SerialName("authToken") val authToken: String? = null
 )
 
+// --- Home users (profils « qui regarde ? ») ---
+
+@Serializable
+data class HomeUsersResponse(
+    @SerialName("users") val users: List<HomeUser> = emptyList()
+)
+
+@Serializable
+data class HomeUser(
+    val id: Long = 0,
+    val uuid: String = "",
+    val title: String = "",
+    val username: String = "",
+    val thumb: String? = null,
+    val admin: Boolean = false,
+    val restricted: Boolean = false,
+    @SerialName("protected") val isProtected: Boolean = false,
+    val hasPassword: Boolean = false,
+    val authToken: String? = null
+) {
+    /** Un PIN est requis pour basculer sur ce profil. */
+    val requiresPin: Boolean get() = isProtected || hasPassword
+}
+
 // --- Resources ---
 
 @Serializable
@@ -29,6 +53,7 @@ data class PlexDevice(
     val name: String = "",
     val product: String = "",
     val provides: String = "",
+    val accessToken: String? = null,
     val connections: List<PlexConnection> = emptyList()
 ) {
     val isServer: Boolean get() = provides.contains("server")

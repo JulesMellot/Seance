@@ -3,6 +3,7 @@ package com.seance.tv.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.seance.tv.data.api.PlexResourcesApi
+import com.seance.tv.data.model.HomeUser
 import com.seance.tv.data.repository.AuthRepository
 import com.seance.tv.di.ServerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,11 +15,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class AuthPhase { Loading, Pin, Profiles, Ready }
+
 data class AuthState(
-    val isAuthenticated: Boolean = false,
+    val phase: AuthPhase = AuthPhase.Loading,
     val isLoading: Boolean = true,
     val pinCode: String = "",
     val pinId: Long = 0L,
+    val profiles: List<HomeUser> = emptyList(),
     val error: String? = null
 )
 
@@ -38,17 +42,12 @@ class AuthViewModel @Inject constructor(
 
     private fun checkExistingAuth() {
         viewModelScope.launch {
+            authRepository.ensureAdminToken()
             val token = authRepository.authToken.first()
             if (!token.isNullOrBlank()) {
-                val serverUrl = serverManager.serverUrl.first()
-                if (serverUrl != null) {
-                    _authState.update { it.copy(isAuthenticated = true, isLoading = false) }
-                } else {
-                    // Token présent mais serveur pas encore découvert — on découvre
-                    discoverServer()
-                }
+                proceedAfterAuth()
             } else {
-                _authState.update { it.copy(isLoading = false) }
+                _authState.update { it.copy(phase = AuthPhase.Pin, isLoading = false) }
                 startPinAuth()
             }
         }
@@ -72,9 +71,54 @@ class AuthViewModel @Inject constructor(
     private suspend fun pollForAuth(pinId: Long) {
         val token = authRepository.pollForToken(pinId)
         if (token != null) {
-            discoverServer()
+            proceedAfterAuth()
         } else {
             _authState.update { it.copy(error = "Délai dépassé. Réessayez.") }
+        }
+    }
+
+    /** Après obtention d'un token : afficher les profils si plusieurs, sinon entrer. */
+    private suspend fun proceedAfterAuth() {
+        _authState.update { it.copy(phase = AuthPhase.Loading, isLoading = true, error = null) }
+        val users = authRepository.getHomeUsers()
+        if (users.size > 1) {
+            _authState.update {
+                it.copy(phase = AuthPhase.Profiles, profiles = users, isLoading = false)
+            }
+        } else {
+            ensureServerThenReady()
+        }
+    }
+
+    /** Sélection d'un profil depuis l'écran « Qui regarde ? ». */
+    fun selectProfile(user: HomeUser, pin: String? = null) {
+        viewModelScope.launch {
+            _authState.update { it.copy(isLoading = true, error = null) }
+            runCatching {
+                if (user.admin && !user.requiresPin) {
+                    authRepository.useAdminAsActive()
+                } else {
+                    authRepository.switchProfile(user.uuid, pin)
+                        ?: error("Bascule impossible")
+                }
+                // Re-découverte forcée : récupère le token d'accès serveur propre au
+                // profil (sinon les utilisateurs gérés reçoivent un 401 sur le PMS).
+                discoverServer()
+            }.onFailure { e ->
+                _authState.update {
+                    it.copy(isLoading = false, error = "Profil indisponible : ${e.message}")
+                }
+            }
+        }
+    }
+
+    /** S'assure qu'un serveur est connu puis passe en phase Ready. */
+    private suspend fun ensureServerThenReady() {
+        val serverUrl = serverManager.serverUrl.first()
+        if (serverUrl != null) {
+            _authState.update { it.copy(phase = AuthPhase.Ready, isLoading = false) }
+        } else {
+            discoverServer()
         }
     }
 
@@ -89,7 +133,10 @@ class AuthViewModel @Inject constructor(
             val url = serverManager.selectBestServerUrl(server)
                 ?: error("Aucune connexion disponible pour ce serveur")
             serverManager.saveServerUrl(url)
-            _authState.update { it.copy(isAuthenticated = true, isLoading = false) }
+            // Token d'accès propre au serveur pour ce profil (essentiel pour les
+            // utilisateurs gérés ; pour le propriétaire il vaut son token de compte).
+            server.accessToken?.takeIf { it.isNotBlank() }?.let { authRepository.setActiveToken(it) }
+            _authState.update { it.copy(phase = AuthPhase.Ready, isLoading = false) }
         }.onFailure { e ->
             _authState.update { it.copy(isLoading = false, error = "Serveur introuvable : ${e.message}") }
         }

@@ -31,6 +31,7 @@ data class ServerOption(
 data class SettingsUiState(
     val libraries: List<LibraryToggle> = emptyList(),
     val servers: List<ServerOption> = emptyList(),
+    val multipleProfiles: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -52,6 +53,17 @@ class SettingsViewModel @Inject constructor(
     init {
         load()
         loadServers()
+        loadProfiles()
+    }
+
+    /** Détecte la présence de plusieurs profils Plex Home (pour proposer d'en changer). */
+    private fun loadProfiles() {
+        viewModelScope.launch {
+            runCatching {
+                val many = authRepository.getHomeUsers().size > 1
+                _uiState.update { it.copy(multipleProfiles = many) }
+            }
+        }
     }
 
     private fun load() {
@@ -72,7 +84,10 @@ class SettingsViewModel @Inject constructor(
     private fun loadServers() {
         viewModelScope.launch {
             runCatching {
-                val token = authRepository.authToken.first() ?: return@launch
+                // Token admin : voit tous les serveurs du compte (le token actif peut
+                // être un token d'accès propre au profil qui ne les liste pas tous).
+                val token = authRepository.adminToken.first()
+                    ?: authRepository.authToken.first() ?: return@launch
                 val clientId = authRepository.getOrCreateClientId()
                 val current = serverManager.serverUrl.first()
                 val servers = resourcesApi.getResources(clientId = clientId, token = token)
