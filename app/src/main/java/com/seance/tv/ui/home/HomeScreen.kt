@@ -154,7 +154,6 @@ fun HomeScreen(
                             is HomeRow.Collection -> "col_${row.collectionKey}"
                             is HomeRow.RecentlyAdded -> "recently_added"
                             is HomeRow.Genre -> "genre_${row.title}"
-                            is HomeRow.LiveTV -> "live_tv"
                         }
                     }) { index, row ->
                         val listIndex = index + 1   // le hero occupe l'index 0
@@ -204,16 +203,6 @@ fun HomeScreen(
                                 active = active,
                                 buildImageUrl = { viewModel.imageUrl(it.thumb) },
                                 onItemClick = ::openDetail,
-                                onItemFocus = onFocus
-                            )
-                            is HomeRow.LiveTV -> RowSection(
-                                title = "Live TV",
-                                items = row.items,
-                                aspect = CardAspect.LANDSCAPE,
-                                accentColor = accent,
-                                active = active,
-                                buildImageUrl = { viewModel.imageUrl(it.thumb) },
-                                onItemClick = {},
                                 onItemFocus = onFocus
                             )
                         }

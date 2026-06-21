@@ -2,9 +2,12 @@ package com.seance.tv.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.seance.tv.data.api.PlexResourcesApi
 import com.seance.tv.data.model.LibrarySection
+import com.seance.tv.data.repository.AuthRepository
 import com.seance.tv.data.repository.PlexRepository
 import com.seance.tv.data.repository.SettingsRepository
+import com.seance.tv.di.ServerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +22,15 @@ data class LibraryToggle(
     val enabled: Boolean
 )
 
+data class ServerOption(
+    val name: String,
+    val url: String,
+    val isCurrent: Boolean
+)
+
 data class SettingsUiState(
     val libraries: List<LibraryToggle> = emptyList(),
+    val servers: List<ServerOption> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -28,7 +38,10 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val plexRepository: PlexRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val authRepository: AuthRepository,
+    private val serverManager: ServerManager,
+    private val resourcesApi: PlexResourcesApi
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -36,7 +49,10 @@ class SettingsViewModel @Inject constructor(
 
     private var allMediaSections: List<LibrarySection> = emptyList()
 
-    init { load() }
+    init {
+        load()
+        loadServers()
+    }
 
     private fun load() {
         viewModelScope.launch {
@@ -49,6 +65,34 @@ class SettingsViewModel @Inject constructor(
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
+        }
+    }
+
+    /** Découvre tous les serveurs Plex du compte pour permettre d'en changer. */
+    private fun loadServers() {
+        viewModelScope.launch {
+            runCatching {
+                val token = authRepository.authToken.first() ?: return@launch
+                val clientId = authRepository.getOrCreateClientId()
+                val current = serverManager.serverUrl.first()
+                val servers = resourcesApi.getResources(clientId = clientId, token = token)
+                    .filter { it.isServer }
+                    .mapNotNull { device ->
+                        val url = serverManager.selectBestServerUrl(device) ?: return@mapNotNull null
+                        ServerOption(name = device.name, url = url, isCurrent = url == current)
+                    }
+                    .distinctBy { it.url }
+                _uiState.update { it.copy(servers = servers) }
+            }
+        }
+    }
+
+    /** Bascule sur un autre serveur : persiste l'URL puis relance l'app via [onDone]. */
+    fun selectServer(url: String, onDone: () -> Unit) {
+        if (_uiState.value.servers.firstOrNull { it.url == url }?.isCurrent == true) return
+        viewModelScope.launch {
+            serverManager.saveServerUrl(url)
+            onDone()
         }
     }
 
@@ -66,6 +110,19 @@ class SettingsViewModel @Inject constructor(
             // Si tout est activé, on stocke un ensemble vide (= toutes, robuste aux ajouts futurs).
             settingsRepository.setEnabledLibraries(if (next == allKeys) emptySet() else next)
             _uiState.update { it.copy(libraries = toToggles(if (next == allKeys) emptySet() else next)) }
+        }
+    }
+
+    /**
+     * Déconnexion : efface le token Plex et le serveur sélectionné.
+     * [onDone] est invoqué une fois le nettoyage terminé (l'écran relance l'Activity,
+     * qui repart alors sur l'écran d'authentification).
+     */
+    fun logout(onDone: () -> Unit) {
+        viewModelScope.launch {
+            authRepository.clearToken()
+            serverManager.clearServerUrl()
+            onDone()
         }
     }
 }

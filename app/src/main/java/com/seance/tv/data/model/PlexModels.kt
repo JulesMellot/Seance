@@ -272,5 +272,4 @@ sealed class HomeRow {
     data class Collection(val title: String, val collectionKey: String, val items: List<MediaItem>) : HomeRow()
     data class RecentlyAdded(val items: List<MediaItem>) : HomeRow()
     data class Genre(val title: String, val items: List<MediaItem>) : HomeRow()
-    data class LiveTV(val items: List<MediaItem>) : HomeRow()
 }

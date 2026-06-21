@@ -208,17 +208,6 @@ fun DetailScreen(
                                 fontSize = 15.sp
                             )
                         }
-                        Button(
-                            onClick = onBack,
-                            colors = ButtonDefaults.colors(
-                                containerColor = Color.White.copy(alpha = 0.16f),
-                                contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black
-                            )
-                        ) {
-                            Text("Retour", fontFamily = SoraFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                        }
                     }
 
                     // Réalisateur / studio

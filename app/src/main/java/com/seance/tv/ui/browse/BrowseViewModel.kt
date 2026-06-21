@@ -16,10 +16,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Critères de tri exposés dans Browse (clés Plex `sort`). */
+enum class SortOption(val label: String, val key: String) {
+    TITLE("A–Z", "titleSort"),
+    ADDED("Récents", "addedAt:desc"),
+    YEAR("Année", "year:desc"),
+    RATING("Note", "rating:desc")
+}
+
 data class BrowseUiState(
     val title: String = "",
     val genres: List<GenreEntry> = emptyList(),
     val selectedGenre: GenreEntry? = null,   // null = « Tous »
+    val sort: SortOption = SortOption.TITLE,
+    val unwatchedOnly: Boolean = false,
     val items: List<MediaItem> = emptyList(),
     val isLoading: Boolean = true,
     val isPaging: Boolean = false,
@@ -79,6 +89,19 @@ class BrowseViewModel @Inject constructor(
         viewModelScope.launch { loadPage(reset = true) }
     }
 
+    fun selectSort(sort: SortOption) {
+        if (sort == _uiState.value.sort) return
+        _uiState.update { it.copy(sort = sort, items = emptyList(), endReached = false, isLoading = true) }
+        viewModelScope.launch { loadPage(reset = true) }
+    }
+
+    fun toggleUnwatched() {
+        _uiState.update {
+            it.copy(unwatchedOnly = !it.unwatchedOnly, items = emptyList(), endReached = false, isLoading = true)
+        }
+        viewModelScope.launch { loadPage(reset = true) }
+    }
+
     fun loadMore() {
         val s = _uiState.value
         if (s.isPaging || s.endReached || s.isLoading) return
@@ -94,7 +117,8 @@ class BrowseViewModel @Inject constructor(
                 sectionId = id,
                 type = plexType,
                 genre = _uiState.value.selectedGenre?.key,
-                sort = "titleSort",
+                sort = _uiState.value.sort.key,
+                unwatched = _uiState.value.unwatchedOnly,
                 start = start,
                 size = PAGE
             )

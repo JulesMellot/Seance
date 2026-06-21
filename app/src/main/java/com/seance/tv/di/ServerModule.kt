@@ -27,6 +27,10 @@ class ServerManager @Inject constructor(
         context.serverDataStore.edit { it[KEY_SERVER_URL] = url }
     }
 
+    suspend fun clearServerUrl() {
+        context.serverDataStore.edit { it.remove(KEY_SERVER_URL) }
+    }
+
     fun selectBestServerUrl(device: PlexDevice): String? =
         device.connections
             .sortedWith(compareByDescending { it.isLocal })

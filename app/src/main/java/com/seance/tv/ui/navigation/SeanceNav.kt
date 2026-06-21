@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -66,6 +68,7 @@ import com.seance.tv.ui.theme.BackgroundBase
 import com.seance.tv.ui.theme.BackgroundDeep
 import com.seance.tv.ui.theme.Dimens
 import com.seance.tv.ui.theme.LoraFontFamily
+import com.seance.tv.ui.theme.Motion
 import com.seance.tv.ui.theme.SoraFontFamily
 import com.seance.tv.ui.theme.TextMuted
 import com.seance.tv.ui.theme.TextPrimary
@@ -226,7 +229,14 @@ private fun RailItem(
 
 @Composable
 private fun SeanceNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Routes.HOME) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.HOME,
+        enterTransition = { fadeIn(tween(Motion.crossfade)) },
+        exitTransition = { fadeOut(tween(Motion.crossfade)) },
+        popEnterTransition = { fadeIn(tween(Motion.crossfade)) },
+        popExitTransition = { fadeOut(tween(Motion.crossfade)) }
+    ) {
         composable(Routes.HOME) {
             HomeScreen(onOpenDetail = { navController.navigate(Routes.detail(it)) })
         }

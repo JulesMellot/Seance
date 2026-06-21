@@ -59,10 +59,15 @@ class PlexRepository @Inject constructor(
         type: Int? = null,
         genre: String? = null,
         sort: String? = null,
+        unwatched: Boolean = false,
         start: Int = 0,
         size: Int = 60
     ): List<MediaItem> =
-        plexApi.getSectionAll(sectionId, type, genre, sort, start, size).mediaContainer.items
+        plexApi.getSectionAll(
+            sectionId, type, genre, sort,
+            unwatched = if (unwatched) 1 else null,
+            start = start, size = size
+        ).mediaContainer.items
 
     suspend fun getSectionGenres(sectionId: String): List<GenreEntry> =
         plexApi.getSectionGenres(sectionId).mediaContainer.directory

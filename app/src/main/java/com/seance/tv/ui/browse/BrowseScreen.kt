@@ -126,8 +126,50 @@ fun BrowseScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
         }
+
+        // Tri + filtre « non vus »
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = Dimens.safeH),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            item {
+                Text(
+                    text = "Trier",
+                    fontFamily = SoraFontFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+            items(SortOption.entries.toList(), key = { it.name }) { option ->
+                GenreChip(
+                    label = option.label,
+                    selected = state.sort == option,
+                    onClick = { viewModel.selectSort(option) }
+                )
+            }
+            item {
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .width(1.dp)
+                        .height(22.dp)
+                        .background(Color.White.copy(alpha = 0.12f))
+                )
+            }
+            item {
+                GenreChip(
+                    label = "Non vus",
+                    selected = state.unwatchedOnly,
+                    onClick = { viewModel.toggleUnwatched() }
+                )
+            }
+        }
+        Spacer(Modifier.height(18.dp))
 
         when {
             state.isLoading && state.items.isEmpty() -> Box(

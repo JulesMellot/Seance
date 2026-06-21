@@ -42,6 +42,7 @@ interface PlexApi {
         @Query("type") type: Int? = null,            // 1 = film, 2 = série
         @Query("genre") genre: String? = null,        // id de genre (depuis getSectionGenres)
         @Query("sort") sort: String? = null,          // ex. "titleSort", "addedAt:desc"
+        @Query("unwatched") unwatched: Int? = null,    // 1 = uniquement les non-vus
         @Query("X-Plex-Container-Start") start: Int = 0,
         @Query("X-Plex-Container-Size") size: Int = 60
     ): MediaContainerResponse
