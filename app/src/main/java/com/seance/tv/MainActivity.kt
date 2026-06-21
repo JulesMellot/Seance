@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
                 val authState by authViewModel.authState.collectAsState()
 
                 when (authState.phase) {
-                    AuthPhase.Ready -> AppScaffold()
+                    AuthPhase.Ready -> AppScaffold(profileThumb = authState.activeProfileThumb)
                     AuthPhase.Profiles -> ProfileScreen(
                         profiles = authState.profiles,
                         isLoading = authState.isLoading,

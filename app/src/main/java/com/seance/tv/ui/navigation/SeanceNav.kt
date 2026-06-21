@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -70,6 +73,7 @@ import com.seance.tv.ui.theme.Dimens
 import com.seance.tv.ui.theme.LoraFontFamily
 import com.seance.tv.ui.theme.Motion
 import com.seance.tv.ui.theme.SoraFontFamily
+import com.seance.tv.ui.theme.SurfaceFocused
 import com.seance.tv.ui.theme.TextMuted
 import com.seance.tv.ui.theme.TextPrimary
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,19 +90,19 @@ object Routes {
 }
 
 private enum class NavDest(val route: String, val label: String, val icon: ImageVector) {
+    Search(Routes.SEARCH, "Recherche", Icons.Filled.Search),
     Home(Routes.HOME, "Accueil", Icons.Filled.Home),
     Movies(Routes.MOVIES, "Films", Icons.Filled.Movie),
     Shows(Routes.SHOWS, "Séries", Icons.Filled.Tv),
-    Search(Routes.SEARCH, "Recherche", Icons.Filled.Search),
     Settings(Routes.SETTINGS, "Paramètres", Icons.Filled.Settings)
 }
 
 @Composable
-fun AppScaffold() {
+fun AppScaffold(profileThumb: String? = null) {
     val navController = rememberNavController()
 
     Row(modifier = Modifier.fillMaxSize().background(BackgroundBase)) {
-        NavRail(navController)
+        NavRail(navController, profileThumb)
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             SeanceNavHost(navController)
         }
@@ -106,7 +110,7 @@ fun AppScaffold() {
 }
 
 @Composable
-private fun NavRail(navController: NavHostController) {
+private fun NavRail(navController: NavHostController, profileThumb: String?) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
 
@@ -131,22 +135,49 @@ private fun NavRail(navController: NavHostController) {
             .padding(vertical = 28.dp, horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Wordmark
-        Box(
+        // Avatar du profil actif (remplace le wordmark)
+        Row(
             modifier = Modifier.height(48.dp).fillMaxWidth(),
-            contentAlignment = Alignment.CenterStart
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = if (expanded) "Séance" else "S",
-                fontFamily = LoraFontFamily,
-                fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.Medium,
-                fontSize = 26.sp,
-                color = Accent,
-                maxLines = 1
-            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceFocused),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!profileThumb.isNullOrBlank()) {
+                    AsyncImage(
+                        model = profileThumb,
+                        contentDescription = "Profil",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                } else {
+                    Text(
+                        text = "S",
+                        fontFamily = LoraFontFamily,
+                        fontStyle = FontStyle.Italic,
+                        fontSize = 22.sp,
+                        color = Accent
+                    )
+                }
+            }
+            if (expanded) {
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    text = "Séance",
+                    fontFamily = LoraFontFamily,
+                    fontStyle = FontStyle.Italic,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 24.sp,
+                    color = Accent,
+                    maxLines = 1
+                )
+            }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
 
         NavDest.entries.forEach { dest ->
             val selected = when (dest) {
@@ -210,7 +241,7 @@ private fun RailItem(
             imageVector = dest.icon,
             contentDescription = dest.label,
             tint = tint,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(28.dp)
         )
         if (expanded) {
             Spacer(Modifier.width(16.dp))

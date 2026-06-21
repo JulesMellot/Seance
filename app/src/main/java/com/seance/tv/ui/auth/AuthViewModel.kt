@@ -23,6 +23,7 @@ data class AuthState(
     val pinCode: String = "",
     val pinId: Long = 0L,
     val profiles: List<HomeUser> = emptyList(),
+    val activeProfileThumb: String? = null,
     val error: String? = null
 )
 
@@ -86,6 +87,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(phase = AuthPhase.Profiles, profiles = users, isLoading = false)
             }
         } else {
+            _authState.update { it.copy(activeProfileThumb = users.firstOrNull()?.thumb) }
             ensureServerThenReady()
         }
     }
@@ -93,7 +95,7 @@ class AuthViewModel @Inject constructor(
     /** Sélection d'un profil depuis l'écran « Qui regarde ? ». */
     fun selectProfile(user: HomeUser, pin: String? = null) {
         viewModelScope.launch {
-            _authState.update { it.copy(isLoading = true, error = null) }
+            _authState.update { it.copy(isLoading = true, error = null, activeProfileThumb = user.thumb) }
             runCatching {
                 if (user.admin && !user.requiresPin) {
                     authRepository.useAdminAsActive()
