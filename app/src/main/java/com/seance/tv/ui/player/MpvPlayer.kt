@@ -1,56 +1,63 @@
 package com.seance.tv.ui.player
 
 import android.content.Context
+import android.os.Build
 import android.view.SurfaceView
 import `is`.xyz.mpv.MPVLib
 
 class MpvPlayer(private val context: Context) {
 
     val surfaceView: SurfaceView = SurfaceView(context)
+    private val mpv: MPVLib = MPVLib.create(context)
 
     init {
-        MPVLib.create(context)
-        MPVLib.setOptionString("vo", "gpu")
-        MPVLib.setOptionString("ao", "audiotrack")
-        MPVLib.setOptionString("hwdec", "mediacodec-copy")
-        MPVLib.setOptionString("hwdec-codecs", "h264,hevc,vp8,vp9,av1")
-        MPVLib.setOptionString("network-timeout", "10")
-        MPVLib.init()
-        MPVLib.attachSurface(surfaceView.holder.surface)
+        mpv.setOptionString("vo", "gpu")
+        mpv.setOptionString("ao", "audiotrack")
+
+        // Pas de décodage hardware sur émulateur
+        val isEmulator = (Build.FINGERPRINT.startsWith("generic")
+                || Build.FINGERPRINT.startsWith("unknown")
+                || Build.MODEL.contains("Emulator")
+                || Build.MODEL.contains("Android SDK"))
+        if (isEmulator) {
+            mpv.setOptionString("hwdec", "no")
+        } else {
+            mpv.setOptionString("hwdec", "mediacodec-copy")
+            mpv.setOptionString("hwdec-codecs", "h264,hevc,vp8,vp9,av1")
+        }
+
+        mpv.setOptionString("network-timeout", "10")
+        mpv.init()
+        mpv.attachSurface(surfaceView.holder.surface)
     }
 
     fun play(url: String, startPositionMs: Long = 0L) {
-        MPVLib.command(arrayOf("loadfile", url))
+        mpv.command(arrayOf("loadfile", url))
         if (startPositionMs > 0) {
-            val seconds = startPositionMs / 1000.0
-            MPVLib.setOptionString("start", seconds.toString())
+            mpv.setOptionString("start", (startPositionMs / 1000.0).toString())
         }
     }
 
     fun togglePause() {
-        val paused = MPVLib.getPropertyBoolean("pause")
-        MPVLib.setPropertyBoolean("pause", !paused)
+        val paused = mpv.getPropertyBoolean("pause")
+        mpv.setPropertyBoolean("pause", !paused)
     }
 
     fun seekRelative(offsetMs: Long) {
-        val seconds = offsetMs / 1000.0
-        MPVLib.command(arrayOf("seek", seconds.toString(), "relative"))
+        mpv.command(arrayOf("seek", (offsetMs / 1000.0).toString(), "relative"))
     }
 
     fun seekAbsolute(positionMs: Long) {
-        val seconds = positionMs / 1000.0
-        MPVLib.command(arrayOf("seek", seconds.toString(), "absolute"))
+        mpv.command(arrayOf("seek", (positionMs / 1000.0).toString(), "absolute"))
     }
 
-    fun getPositionMs(): Long {
-        return (MPVLib.getPropertyDouble("time-pos") * 1000).toLong()
-    }
+    fun getPositionMs(): Long =
+        (mpv.getPropertyDouble("time-pos") * 1000).toLong()
 
-    fun getDurationMs(): Long {
-        return (MPVLib.getPropertyDouble("duration") * 1000).toLong()
-    }
+    fun getDurationMs(): Long =
+        (mpv.getPropertyDouble("duration") * 1000).toLong()
 
     fun release() {
-        MPVLib.destroy()
+        mpv.destroy()
     }
 }
