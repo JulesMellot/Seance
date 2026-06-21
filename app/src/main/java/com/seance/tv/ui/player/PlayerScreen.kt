@@ -45,12 +45,21 @@ import kotlinx.coroutines.delay
 @Composable
 fun PlayerScreen(
     state: PlayerUiState,
-    mpvPlayer: MpvPlayer,
+    videoPlayer: VideoPlayer,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
+    onProgress: (Long, Long) -> Unit,
     onBack: () -> Unit
 ) {
     var controlsVisible by remember { mutableStateOf(true) }
+
+    // Position en direct depuis le lecteur
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(500)
+            onProgress(videoPlayer.getPositionMs(), videoPlayer.getDurationMs())
+        }
+    }
 
     LaunchedEffect(state.showControls, state.isPlaying) {
         if (state.isPlaying) {
@@ -61,13 +70,18 @@ fun PlayerScreen(
 
     LaunchedEffect(state.streamUrl) {
         if (state.streamUrl.isNotBlank()) {
-            mpvPlayer.play(state.streamUrl, state.positionMs)
+            videoPlayer.play(state.streamUrl, state.positionMs)
         }
+    }
+
+    // Synchronise pause/lecture déclenché par la télécommande
+    LaunchedEffect(state.isPlaying) {
+        videoPlayer.setPlaying(state.isPlaying)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
-            factory = { mpvPlayer.surfaceView },
+            factory = { videoPlayer.playerView },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -153,7 +167,10 @@ fun PlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // -10s
-                        ControlButton(label = "−10s", onClick = { onSeek(-10_000) })
+                        ControlButton(label = "−10s", onClick = {
+                            videoPlayer.seekRelative(-10_000)
+                            onSeek(-10_000)
+                        })
                         Spacer(modifier = Modifier.width(16.dp))
                         // Play/Pause
                         ControlButton(
@@ -163,7 +180,10 @@ fun PlayerScreen(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         // +10s
-                        ControlButton(label = "+10s", onClick = { onSeek(10_000) })
+                        ControlButton(label = "+10s", onClick = {
+                            videoPlayer.seekRelative(10_000)
+                            onSeek(10_000)
+                        })
                     }
                 }
             }

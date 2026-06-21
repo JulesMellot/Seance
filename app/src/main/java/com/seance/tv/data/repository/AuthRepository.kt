@@ -40,12 +40,13 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun createPin(): PinResponse = authApi.createPin()
+    suspend fun createPin(): PinResponse = authApi.createPin(getOrCreateClientId())
 
     suspend fun pollForToken(pinId: Long): String? {
+        val clientId = getOrCreateClientId()
         repeat(150) {
             delay(2_000)
-            val pin = authApi.getPin(pinId)
+            val pin = authApi.getPin(pinId, clientId)
             if (!pin.authToken.isNullOrBlank()) {
                 saveToken(pin.authToken)
                 return pin.authToken

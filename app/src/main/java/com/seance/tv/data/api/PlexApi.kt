@@ -1,6 +1,8 @@
 package com.seance.tv.data.api
 
 import com.seance.tv.data.model.CollectionContainerResponse
+import com.seance.tv.data.model.GenreDirectoryResponse
+import com.seance.tv.data.model.HubContainerResponse
 import com.seance.tv.data.model.LibrarySectionsResponse
 import com.seance.tv.data.model.MediaContainerResponse
 import retrofit2.http.GET
@@ -34,9 +36,32 @@ interface PlexApi {
         @Query("X-Plex-Container-Size") size: Int = 20
     ): MediaContainerResponse
 
+    @GET("library/sections/{sectionId}/all")
+    suspend fun getSectionAll(
+        @Path("sectionId") sectionId: String,
+        @Query("type") type: Int? = null,            // 1 = film, 2 = série
+        @Query("genre") genre: String? = null,        // id de genre (depuis getSectionGenres)
+        @Query("sort") sort: String? = null,          // ex. "titleSort", "addedAt:desc"
+        @Query("X-Plex-Container-Start") start: Int = 0,
+        @Query("X-Plex-Container-Size") size: Int = 60
+    ): MediaContainerResponse
+
+    @GET("library/sections/{sectionId}/genre")
+    suspend fun getSectionGenres(
+        @Path("sectionId") sectionId: String
+    ): GenreDirectoryResponse
+
+    @GET("hubs/search")
+    suspend fun search(
+        @Query("query") query: String,
+        @Query("limit") limit: Int = 30
+    ): HubContainerResponse
+
     @GET("library/metadata/{ratingKey}")
     suspend fun getMetadata(
-        @Path("ratingKey") ratingKey: String
+        @Path("ratingKey") ratingKey: String,
+        @Query("includeRelated") includeRelated: Int = 1,
+        @Query("includeExtras") includeExtras: Int = 0
     ): MediaContainerResponse
 
     @GET("library/metadata/{ratingKey}/children")

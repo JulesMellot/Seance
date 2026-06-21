@@ -4,14 +4,19 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -41,6 +45,7 @@ import coil.compose.AsyncImage
 import com.seance.tv.data.model.MediaItem
 import com.seance.tv.ui.theme.Accent
 import com.seance.tv.ui.theme.AccentBright
+import com.seance.tv.ui.theme.Dimens
 import com.seance.tv.ui.theme.Motion
 import com.seance.tv.ui.theme.Radii
 import com.seance.tv.ui.theme.SoraFontFamily
@@ -48,57 +53,57 @@ import com.seance.tv.ui.theme.Surface
 import com.seance.tv.ui.theme.SurfaceFocused
 import com.seance.tv.ui.theme.TextMuted
 import com.seance.tv.ui.theme.TextPrimary
-
-enum class CardAspect { PORTRAIT, LANDSCAPE }
+import com.seance.tv.ui.theme.TextSecondary
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun MediaCard(
-    item: MediaItem,
-    imageUrl: String?,
-    aspect: CardAspect = CardAspect.PORTRAIT,
-    accentColor: Color = Accent,
-    showCaption: Boolean = true,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    onFocus: () -> Unit = {}
+fun EpisodeRow(
+    episodes: List<MediaItem>,
+    buildImageUrl: (String?) -> String?,
+    onPlay: (MediaItem) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val aspectRatio = if (aspect == CardAspect.PORTRAIT) 2f / 3f else 16f / 9f
-    var focused by remember { mutableStateOf(false) }
-    val accent = accentColor.takeIf { it != Color.Transparent } ?: Accent
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = Dimens.safeH),
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        items(episodes, key = { it.ratingKey }) { episode ->
+            EpisodeCard(episode, buildImageUrl(episode.thumb), onClick = { onPlay(episode) })
+        }
+    }
+}
 
-    // Une seule source de focus pilote scale + ombre teintée + bordure + révélation titre.
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun EpisodeCard(
+    episode: MediaItem,
+    imageUrl: String?,
+    onClick: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
     val p by animateFloatAsState(
         targetValue = if (focused) 1f else 0f,
         animationSpec = tween(Motion.fast, easing = Motion.expoOut),
-        label = "focus"
+        label = "epFocus"
     )
 
-    Column(modifier = modifier) {
+    Column(modifier = Modifier.width(300.dp)) {
         Card(
             onClick = onClick,
             onLongClick = {},
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(aspectRatio)
-                .onFocusChanged {
-                    focused = it.isFocused
-                    if (it.isFocused) onFocus()
-                }
-                .graphicsLayer {
-                    val s = lerp(1f, 1.06f, p)
-                    scaleX = s; scaleY = s
-                }
+                .aspectRatio(16f / 9f)
+                .onFocusChanged { focused = it.isFocused }
+                .graphicsLayer { val s = lerp(1f, 1.05f, p); scaleX = s; scaleY = s }
                 .shadow(
-                    elevation = lerp(0f, 26f, p).dp,
+                    elevation = lerp(0f, 20f, p).dp,
                     shape = RoundedCornerShape(Radii.card),
-                    ambientColor = accent,
-                    spotColor = accent
+                    ambientColor = Accent,
+                    spotColor = Accent
                 ),
-            colors = CardDefaults.colors(
-                containerColor = Surface,
-                focusedContainerColor = SurfaceFocused
-            ),
+            colors = CardDefaults.colors(containerColor = Surface, focusedContainerColor = SurfaceFocused),
             border = CardDefaults.border(
                 border = Border.None,
                 focusedBorder = Border(BorderStroke(2.5.dp, AccentBright))
@@ -110,38 +115,14 @@ fun MediaCard(
                 if (imageUrl != null) {
                     AsyncImage(
                         model = imageUrl,
-                        contentDescription = item.title,
+                        contentDescription = episode.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(SurfaceFocused),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = item.title.take(2).uppercase(),
-                            fontFamily = SoraFontFamily,
-                            fontSize = 26.sp,
-                            color = TextMuted
-                        )
-                    }
+                    Box(modifier = Modifier.fillMaxSize().background(SurfaceFocused))
                 }
-
-                // Scrim bas — ancre progression / titre épisode
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
-                            )
-                        )
-                )
-
-                if (item.progressFraction > 0.01f) {
+                if (episode.progressFraction > 0.01f) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -151,30 +132,44 @@ fun MediaCard(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(item.progressFraction)
+                                .fillMaxWidth(episode.progressFraction)
                                 .height(3.dp)
                                 .clip(RoundedCornerShape(Radii.pill))
-                                .background(accent)
+                                .background(Accent)
                         )
                     }
                 }
             }
         }
 
-        // Légende révélée au focus — espace réservé pour éviter le saut de layout.
-        if (showCaption) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(16.dp)) {
-                Text(
-                    text = item.title,
-                    fontFamily = SoraFontFamily,
-                    fontSize = 12.sp,
-                    color = androidx.compose.ui.graphics.lerp(TextMuted, TextPrimary, p),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.graphicsLayer { alpha = lerp(0f, 1f, p) }
-                )
-            }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = buildString {
+                episode.episodeIndex?.let { append("E$it · ") }
+                append(episode.title)
+            },
+            fontFamily = SoraFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            color = TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        episode.runtimeLabel?.let {
+            Spacer(Modifier.height(2.dp))
+            Text(it, fontFamily = SoraFontFamily, fontSize = 11.sp, color = TextMuted)
+        }
+        if (episode.summary.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = episode.summary,
+                fontFamily = SoraFontFamily,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                color = TextSecondary,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

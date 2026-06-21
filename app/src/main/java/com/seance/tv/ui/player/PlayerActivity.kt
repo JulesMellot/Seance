@@ -24,7 +24,7 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private val viewModel: PlayerViewModel by viewModels()
-    private lateinit var mpvPlayer: MpvPlayer
+    private lateinit var videoPlayer: VideoPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +42,7 @@ class PlayerActivity : ComponentActivity() {
         val durationMs = intent.getLongExtra(EXTRA_DURATION, 0L)
         val viewOffsetMs = intent.getLongExtra(EXTRA_VIEW_OFFSET, 0L)
 
-        mpvPlayer = MpvPlayer(this)
+        videoPlayer = VideoPlayer(this)
 
         viewModel.initialize(ratingKey, title, streamUrl, partKey, durationMs, viewOffsetMs)
 
@@ -51,9 +51,10 @@ class PlayerActivity : ComponentActivity() {
                 val state by viewModel.uiState.collectAsState()
                 PlayerScreen(
                     state = state,
-                    mpvPlayer = mpvPlayer,
+                    videoPlayer = videoPlayer,
                     onPlayPause = viewModel::togglePlayPause,
                     onSeek = viewModel::seek,
+                    onProgress = viewModel::onProgress,
                     onBack = { finish() }
                 )
             }
@@ -69,11 +70,13 @@ class PlayerActivity : ComponentActivity() {
             }
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                videoPlayer.seekRelative(10_000)
                 viewModel.seek(10_000)
                 true
             }
             KeyEvent.KEYCODE_MEDIA_REWIND,
             KeyEvent.KEYCODE_DPAD_LEFT -> {
+                videoPlayer.seekRelative(-10_000)
                 viewModel.seek(-10_000)
                 true
             }
@@ -91,7 +94,7 @@ class PlayerActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        mpvPlayer.release()
+        videoPlayer.release()
         super.onDestroy()
     }
 }

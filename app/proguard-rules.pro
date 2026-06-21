@@ -1,5 +1,5 @@
 -keep class com.seance.tv.data.model.** { *; }
--keep class is.xyz.mpv.** { *; }
+-keep class androidx.media3.** { *; }
 -keepclassmembers class * {
     @com.google.dagger.* <methods>;
 }

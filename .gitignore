@@ -5,7 +5,12 @@
 /.idea
 .DS_Store
 /build
+app/build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# Agent tooling
+.agents/
+skills-lock.json

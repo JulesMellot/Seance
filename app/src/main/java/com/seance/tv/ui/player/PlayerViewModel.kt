@@ -71,6 +71,15 @@ class PlayerViewModel @Inject constructor(
         _uiState.update { it.copy(positionMs = positionMs) }
     }
 
+    fun onProgress(positionMs: Long, durationMs: Long) {
+        _uiState.update {
+            it.copy(
+                positionMs = positionMs.coerceAtLeast(0L),
+                durationMs = if (durationMs > 0L) durationMs else it.durationMs
+            )
+        }
+    }
+
     fun saveProgress() {
         val state = _uiState.value
         if (state.ratingKey.isBlank()) return

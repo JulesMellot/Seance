@@ -81,7 +81,9 @@ class AuthViewModel @Inject constructor(
     private suspend fun discoverServer() {
         _authState.update { it.copy(isLoading = true) }
         runCatching {
-            val devices = resourcesApi.getResources()
+            val token = authRepository.authToken.first() ?: error("Token manquant")
+            val clientId = authRepository.getOrCreateClientId()
+            val devices = resourcesApi.getResources(clientId = clientId, token = token)
             val server = devices.firstOrNull { it.isServer }
                 ?: error("Aucun serveur Plex trouvé")
             val url = serverManager.selectBestServerUrl(server)

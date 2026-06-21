@@ -28,8 +28,8 @@ data class ResourcesContainer(
 data class PlexDevice(
     val name: String = "",
     val product: String = "",
-    @SerialName("provides") val provides: String = "",
-    @SerialName("Connection") val connections: List<PlexConnection> = emptyList()
+    val provides: String = "",
+    val connections: List<PlexConnection> = emptyList()
 ) {
     val isServer: Boolean get() = provides.contains("server")
 }
@@ -37,10 +37,10 @@ data class PlexDevice(
 @Serializable
 data class PlexConnection(
     val uri: String = "",
-    val local: Int = 0,
-    val relay: Int = 0
+    val local: Boolean = false,
+    val relay: Boolean = false
 ) {
-    val isLocal: Boolean get() = local == 1
+    val isLocal: Boolean get() = local
 }
 
 // --- Libraries ---
@@ -91,10 +91,16 @@ data class MediaItem(
     val rating: Double? = null,
     val contentRating: String? = null,
     val childCount: Int? = null,
+    val tagline: String? = null,
+    val studio: String? = null,
+    val originallyAvailableAt: String? = null,
+    @SerialName("librarySectionID") val librarySectionId: Int? = null,
     @SerialName("Director") val directors: List<PlexTag> = emptyList(),
     @SerialName("Genre") val genres: List<PlexTag> = emptyList(),
     @SerialName("Role") val cast: List<PlexRole> = emptyList(),
     @SerialName("Media") val media: List<PlexMedia> = emptyList(),
+    @SerialName("Image") val images: List<PlexImage> = emptyList(),
+    @SerialName("Related") val related: RelatedHubs? = null,
     @SerialName("index") val episodeIndex: Int? = null,
     @SerialName("parentIndex") val seasonIndex: Int? = null,
     @SerialName("parentTitle") val showTitle: String? = null,
@@ -115,10 +121,59 @@ data class MediaItem(
             val total = duration ?: return 0f
             return (offset.toFloat() / total.toFloat()).coerceIn(0f, 1f)
         }
+
+    // ── Libellés dérivés (champs fetchés mais jusqu'ici inutilisés en UI) ──
+    val resolutionLabel: String?
+        get() = media.firstOrNull()?.videoResolution?.let { res ->
+            when (res.lowercase()) {
+                "4k" -> "4K"
+                "1080" -> "1080p"
+                "720" -> "720p"
+                "480" -> "480p"
+                "sd" -> "SD"
+                else -> res.uppercase()
+            }
+        }
+
+    val videoCodecLabel: String? get() = media.firstOrNull()?.videoCodec?.uppercase()
+    val audioCodecLabel: String? get() = media.firstOrNull()?.audioCodec?.uppercase()
+
+    val runtimeLabel: String?
+        get() = duration?.let {
+            val h = it / 3_600_000
+            val m = (it % 3_600_000) / 60_000
+            if (h > 0) "${h}h ${m}min" else "${m}min"
+        }
+
+    val seasonsLabel: String?
+        get() = childCount?.takeIf { isShow }?.let { "$it saison${if (it > 1) "s" else ""}" }
+
+    val unwatchedCount: Int?
+        get() {
+            val leaf = leafCount ?: return null
+            val viewed = viewedLeafCount ?: 0
+            return (leaf - viewed).takeIf { it > 0 }
+        }
+
+    /** Logo-titre transparent (clearLogo) si le serveur le fournit. */
+    val clearLogo: String?
+        get() = images.firstOrNull { it.type == "clearLogo" }?.url
 }
 
 @Serializable
-data class PlexTag(val tag: String = "")
+data class PlexImage(
+    val alt: String = "",
+    val type: String = "",
+    val url: String = ""
+)
+
+@Serializable
+data class PlexTag(val id: Int? = null, val tag: String = "")
+
+@Serializable
+data class RelatedHubs(
+    @SerialName("Hub") val hubs: List<Hub> = emptyList()
+)
 
 @Serializable
 data class PlexRole(
@@ -171,11 +226,51 @@ data class CollectionContainer(
     @SerialName("Metadata") val collections: List<CollectionItem> = emptyList()
 )
 
+// --- Genres (chips de filtre browse) ---
+
+@Serializable
+data class GenreDirectoryResponse(
+    @SerialName("MediaContainer") val mediaContainer: GenreContainer
+)
+
+@Serializable
+data class GenreContainer(
+    @SerialName("Directory") val directory: List<GenreEntry> = emptyList()
+)
+
+@Serializable
+data class GenreEntry(
+    val key: String = "",
+    val title: String = ""
+)
+
+// --- Hubs (recherche multi-type + similaires) ---
+
+@Serializable
+data class HubContainerResponse(
+    @SerialName("MediaContainer") val mediaContainer: HubContainer
+)
+
+@Serializable
+data class HubContainer(
+    @SerialName("Hub") val hubs: List<Hub> = emptyList()
+)
+
+@Serializable
+data class Hub(
+    val title: String = "",
+    val type: String = "",
+    val hubIdentifier: String = "",
+    val size: Int = 0,
+    @SerialName("Metadata") val items: List<MediaItem> = emptyList()
+)
+
 // --- Home rows ---
 
 sealed class HomeRow {
     data class OnDeck(val items: List<MediaItem>) : HomeRow()
     data class Collection(val title: String, val collectionKey: String, val items: List<MediaItem>) : HomeRow()
     data class RecentlyAdded(val items: List<MediaItem>) : HomeRow()
+    data class Genre(val title: String, val items: List<MediaItem>) : HomeRow()
     data class LiveTV(val items: List<MediaItem>) : HomeRow()
 }

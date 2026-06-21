@@ -8,7 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.seance.tv.ui.auth.AuthScreen
 import com.seance.tv.ui.auth.AuthViewModel
-import com.seance.tv.ui.home.HomeScreen
+import com.seance.tv.ui.navigation.AppScaffold
 import com.seance.tv.ui.theme.SeanceTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
                 val authState by authViewModel.authState.collectAsState()
 
                 when {
-                    authState.isAuthenticated -> HomeScreen()
+                    authState.isAuthenticated -> AppScaffold()
                     else -> AuthScreen(viewModel = authViewModel)
                 }
             }

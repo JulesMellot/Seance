@@ -22,7 +22,7 @@ class PlexHeadersInterceptor @Inject constructor(
 
         val request = chain.request().newBuilder()
             .addHeader("X-Plex-Client-Identifier", clientId)
-            .addHeader("X-Plex-Product", "Séance")
+            .addHeader("X-Plex-Product", "Seance")
             .addHeader("X-Plex-Version", "1.0.0")
             .addHeader("X-Plex-Platform", "Android TV")
             .addHeader("X-Plex-Device", "Android TV")

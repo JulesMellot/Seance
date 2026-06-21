@@ -8,10 +8,11 @@ import com.seance.tv.data.repository.AuthRepository
 import com.seance.tv.data.repository.PlexRepository
 import com.seance.tv.di.ServerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -21,10 +22,14 @@ data class HomeUiState(
     val rows: List<HomeRow> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
-    val focusedItem: MediaItem? = null,
+    val featured: List<MediaItem> = emptyList(),  // hero auto-rotatif : reprendre + nouveautés
+    val heroIndex: Int = 0,
+    val focusedItem: MediaItem? = null,           // pour l'accent dynamique (carte focalisée)
     val serverUrl: String = "",
     val authToken: String = ""
-)
+) {
+    val heroItem: MediaItem? get() = featured.getOrNull(heroIndex)
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -35,6 +40,8 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private var rotationJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -50,7 +57,15 @@ class HomeViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { plexRepository.buildHome() }
                 .onSuccess { rows ->
-                    _uiState.update { it.copy(rows = rows, isLoading = false) }
+                    val onDeck = rows.filterIsInstance<HomeRow.OnDeck>().flatMap { it.items }
+                    val recent = rows.filterIsInstance<HomeRow.RecentlyAdded>().flatMap { it.items }
+                    val featured = interleave(onDeck.take(6), recent.take(6))
+                        .distinctBy { it.ratingKey }
+                        .take(8)
+                    _uiState.update {
+                        it.copy(rows = rows, featured = featured, heroIndex = 0, isLoading = false)
+                    }
+                    startHeroRotation()
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -58,7 +73,30 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun shuffle() = loadHome()
+    /** Le hero change tout seul toutes les 9 s s'il y a plusieurs éléments à la une. */
+    private fun startHeroRotation() {
+        rotationJob?.cancel()
+        rotationJob = viewModelScope.launch {
+            while (true) {
+                delay(9_000)
+                val count = _uiState.value.featured.size
+                if (count > 1) {
+                    _uiState.update { it.copy(heroIndex = (it.heroIndex + 1) % count) }
+                }
+            }
+        }
+    }
+
+    /** Mélange alterné « reprendre » / « nouveautés ». */
+    private fun interleave(a: List<MediaItem>, b: List<MediaItem>): List<MediaItem> {
+        val out = ArrayList<MediaItem>(a.size + b.size)
+        val max = maxOf(a.size, b.size)
+        for (i in 0 until max) {
+            if (i < a.size) out.add(a[i])
+            if (i < b.size) out.add(b[i])
+        }
+        return out
+    }
 
     fun onItemFocused(item: MediaItem?) {
         _uiState.update { it.copy(focusedItem = item) }
@@ -72,5 +110,10 @@ class HomeViewModel @Inject constructor(
     fun streamUrl(partKey: String): String {
         val state = _uiState.value
         return plexRepository.buildStreamUrl(partKey, state.serverUrl, state.authToken)
+    }
+
+    override fun onCleared() {
+        rotationJob?.cancel()
+        super.onCleared()
     }
 }

@@ -50,16 +50,32 @@ android {
     }
 }
 
+// media3 1.4.1 drags several AndroidX libs up to versions that require compileSdk 35
+// (lifecycle 2.9.x, core 1.16.x, compose 1.10.x). Pin them back to the last
+// SDK-34-compatible releases so the whole graph stays buildable against compileSdk 34.
+configurations.all {
+    resolutionStrategy.eachDependency {
+        when (requested.group) {
+            "androidx.lifecycle" -> useVersion("2.8.7")
+            "androidx.core" -> useVersion("1.13.1")
+            "androidx.compose.ui",
+            "androidx.compose.foundation",
+            "androidx.compose.animation",
+            "androidx.compose.runtime" -> useVersion("1.6.8")
+        }
+    }
+}
+
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.runtime)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.activity.compose)
-    implementation(libs.tv.foundation)
     implementation(libs.tv.material)
 
     implementation(libs.lifecycle.viewmodel.compose)
@@ -69,6 +85,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.navigation.compose)
 
     implementation(libs.retrofit)
     implementation(libs.okhttp)
@@ -81,5 +98,8 @@ dependencies {
     implementation(libs.palette.ktx)
     implementation(libs.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.libmpv.android)
+
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.common)
 }

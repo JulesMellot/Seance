@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,13 +17,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -30,12 +35,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.seance.tv.ui.theme.BackgroundDark
+import com.seance.tv.ui.theme.Accent
+import com.seance.tv.ui.theme.AccentSoft
+import com.seance.tv.ui.theme.BackgroundBase
+import com.seance.tv.ui.theme.BackgroundDeep
+import com.seance.tv.ui.theme.BorderSubtle
 import com.seance.tv.ui.theme.LoraFontFamily
-import com.seance.tv.ui.theme.OnSurface
+import com.seance.tv.ui.theme.Radii
 import com.seance.tv.ui.theme.SoraFontFamily
+import com.seance.tv.ui.theme.Surface
+import com.seance.tv.ui.theme.TextMuted
+import com.seance.tv.ui.theme.TextPrimary
+import com.seance.tv.ui.theme.TextSecondary
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -45,57 +57,69 @@ fun AuthScreen(viewModel: AuthViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundDark),
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(Surface, BackgroundBase, BackgroundDeep),
+                    radius = 1400f
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App name
             Text(
                 text = "Séance",
                 fontFamily = LoraFontFamily,
                 fontStyle = FontStyle.Italic,
-                fontSize = 64.sp,
-                color = OnSurface,
-                modifier = Modifier.padding(bottom = 48.dp)
+                fontWeight = FontWeight.Medium,
+                fontSize = 68.sp,
+                color = TextPrimary
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "VOTRE CINÉMA, CHEZ VOUS",
+                fontFamily = SoraFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp,
+                letterSpacing = 4.sp,
+                color = TextMuted
             )
 
+            Spacer(modifier = Modifier.height(56.dp))
+
             when {
-                state.isLoading && state.pinCode.isEmpty() -> {
-                    PollingDots()
-                }
+                state.isLoading && state.pinCode.isEmpty() -> PollingDots()
+
                 state.pinCode.isNotEmpty() -> {
-                    Text(
-                        text = state.pinCode,
-                        fontFamily = SoraFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 72.sp,
-                        color = Color.White,
-                        letterSpacing = 16.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text(
-                        text = "Rendez-vous sur plex.tv/link",
-                        fontFamily = SoraFontFamily,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 20.sp,
-                        color = OnSurface.copy(alpha = 0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
+                    PinCode(state.pinCode)
+                    Spacer(modifier = Modifier.height(28.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Rendez-vous sur ",
+                            fontFamily = SoraFontFamily,
+                            fontSize = 17.sp,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "plex.tv/link",
+                            fontFamily = SoraFontFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                            color = Accent
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(28.dp))
                     PollingDots()
                 }
+
                 state.error != null -> {
                     Text(
                         text = state.error ?: "",
                         fontFamily = SoraFontFamily,
-                        fontSize = 18.sp,
-                        color = Color.Red.copy(alpha = 0.8f),
+                        fontSize = 16.sp,
+                        color = Color(0xFFE8736A),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 48.dp)
                     )
@@ -105,33 +129,52 @@ fun AuthScreen(viewModel: AuthViewModel) {
     }
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun PinCode(code: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        code.forEach { ch ->
+            Box(
+                modifier = Modifier
+                    .size(width = 64.dp, height = 84.dp)
+                    .clip(RoundedCornerShape(Radii.chip))
+                    .background(AccentSoft)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(Radii.chip)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = ch.toString(),
+                    fontFamily = SoraFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 44.sp,
+                    color = TextPrimary
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PollingDots() {
-    val infiniteTransition = rememberInfiniteTransition(label = "dots")
+    val transition = rememberInfiniteTransition(label = "dots")
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(3) { index ->
-            val alpha by infiniteTransition.animateFloat(
+            val alpha by transition.animateFloat(
                 initialValue = 0.2f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(
-                        durationMillis = 600,
-                        delayMillis = index * 200,
-                        easing = LinearEasing
-                    ),
+                    animation = tween(600, delayMillis = index * 200, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse
                 ),
                 label = "dot_$index"
             )
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(9.dp)
                     .alpha(alpha)
-                    .background(color = Color.White, shape = CircleShape)
+                    .background(color = Accent, shape = CircleShape)
             )
         }
     }
