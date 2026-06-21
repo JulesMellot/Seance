@@ -2,6 +2,19 @@
 
 A Netflix-grade **Android TV** client for [Plex](https://www.plex.tv/), built with Jetpack Compose for TV. Séance keeps a distinct identity (amber Plex accent, Lora serif titles) while delivering the polish you'd expect from a premium streaming UI.
 
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/home.png" alt="Home"/><br/><sub>Cinematic home — auto-rotating hero, focus-aware rows, dynamic accent</sub></td>
+<td width="50%"><img src="screenshots/browse.png" alt="Browse"/><br/><sub>Browse grid — genre chips + sort (A–Z / recent / year / rating) + unwatched filter</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/search.png" alt="Search"/><br/><sub>TV keyboard — long-press accents, voice search, recent searches</sub></td>
+<td width="50%"><img src="screenshots/settings.png" alt="Settings"/><br/><sub>Settings — library toggles, server switch, account; profile avatar in the rail</sub></td>
+</tr>
+</table>
+
 ## Features
 
 - **Cinematic home** — a full-screen, auto-rotating hero that mixes *Continue Watching* and *Recently Added*, with title logos (Plex `clearLogo`) and a serif fallback.
