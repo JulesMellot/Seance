@@ -31,6 +31,11 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,12 +94,17 @@ object Routes {
     fun detail(ratingKey: String) = "detail/$ratingKey"
 }
 
-private enum class NavDest(val route: String, val label: String, val icon: ImageVector) {
-    Search(Routes.SEARCH, "Recherche", Icons.Filled.Search),
-    Home(Routes.HOME, "Accueil", Icons.Filled.Home),
-    Movies(Routes.MOVIES, "Films", Icons.Filled.Movie),
-    Shows(Routes.SHOWS, "Séries", Icons.Filled.Tv),
-    Settings(Routes.SETTINGS, "Paramètres", Icons.Filled.Settings)
+private enum class NavDest(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,         // contour, au repos
+    val selectedIcon: ImageVector  // plein, quand actif/focus
+) {
+    Search(Routes.SEARCH, "Recherche", Icons.Outlined.Search, Icons.Filled.Search),
+    Home(Routes.HOME, "Accueil", Icons.Outlined.Home, Icons.Filled.Home),
+    Movies(Routes.MOVIES, "Films", Icons.Outlined.Movie, Icons.Filled.Movie),
+    Shows(Routes.SHOWS, "Séries", Icons.Outlined.Tv, Icons.Filled.Tv),
+    Settings(Routes.SETTINGS, "Paramètres", Icons.Outlined.Settings, Icons.Filled.Settings)
 }
 
 @Composable
@@ -238,10 +248,10 @@ private fun RailItem(
         )
         Spacer(Modifier.width(10.dp))
         Icon(
-            imageVector = dest.icon,
+            imageVector = if (active) dest.selectedIcon else dest.icon,
             contentDescription = dest.label,
             tint = tint,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(26.dp)
         )
         if (expanded) {
             Spacer(Modifier.width(16.dp))
