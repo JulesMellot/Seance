@@ -18,6 +18,7 @@ class PlayerActivity : ComponentActivity() {
         const val EXTRA_RATING_KEY = "rating_key"
         const val EXTRA_TITLE = "title"
         const val EXTRA_PART_KEY = "part_key"
+        const val EXTRA_STREAM_URL = "stream_url"
         const val EXTRA_DURATION = "duration_ms"
         const val EXTRA_VIEW_OFFSET = "view_offset_ms"
     }
@@ -36,13 +37,14 @@ class PlayerActivity : ComponentActivity() {
 
         val ratingKey = intent.getStringExtra(EXTRA_RATING_KEY) ?: run { finish(); return }
         val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
+        val streamUrl = intent.getStringExtra(EXTRA_STREAM_URL) ?: ""
         val partKey = intent.getStringExtra(EXTRA_PART_KEY)
         val durationMs = intent.getLongExtra(EXTRA_DURATION, 0L)
         val viewOffsetMs = intent.getLongExtra(EXTRA_VIEW_OFFSET, 0L)
 
         mpvPlayer = MpvPlayer(this)
 
-        viewModel.initialize(ratingKey, title, partKey, durationMs, viewOffsetMs)
+        viewModel.initialize(ratingKey, title, streamUrl, partKey, durationMs, viewOffsetMs)
 
         setContent {
             SeanceTheme {

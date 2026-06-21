@@ -2,8 +2,8 @@ package com.seance.tv.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.seance.tv.data.api.PlexResourcesApi
 import com.seance.tv.data.repository.AuthRepository
-import com.seance.tv.data.repository.PlexRepository
 import com.seance.tv.di.ServerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +25,7 @@ data class AuthState(
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val resourcesApi: PlexResourcesApi,
     private val serverManager: ServerManager
 ) : ViewModel() {
 
@@ -39,7 +40,13 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             val token = authRepository.authToken.first()
             if (!token.isNullOrBlank()) {
-                _authState.update { it.copy(isAuthenticated = true, isLoading = false) }
+                val serverUrl = serverManager.serverUrl.first()
+                if (serverUrl != null) {
+                    _authState.update { it.copy(isAuthenticated = true, isLoading = false) }
+                } else {
+                    // Token présent mais serveur pas encore découvert — on découvre
+                    discoverServer()
+                }
             } else {
                 _authState.update { it.copy(isLoading = false) }
                 startPinAuth()
@@ -53,11 +60,7 @@ class AuthViewModel @Inject constructor(
                 _authState.update { it.copy(isLoading = true, error = null) }
                 val pin = authRepository.createPin()
                 _authState.update {
-                    it.copy(
-                        pinCode = pin.code.uppercase(),
-                        pinId = pin.id,
-                        isLoading = false
-                    )
+                    it.copy(pinCode = pin.code.uppercase(), pinId = pin.id, isLoading = false)
                 }
                 pollForAuth(pin.id)
             }.onFailure { e ->
@@ -69,9 +72,24 @@ class AuthViewModel @Inject constructor(
     private suspend fun pollForAuth(pinId: Long) {
         val token = authRepository.pollForToken(pinId)
         if (token != null) {
-            _authState.update { it.copy(isAuthenticated = true) }
+            discoverServer()
         } else {
-            _authState.update { it.copy(error = "Délai d'authentification dépassé. Réessayez.") }
+            _authState.update { it.copy(error = "Délai dépassé. Réessayez.") }
+        }
+    }
+
+    private suspend fun discoverServer() {
+        _authState.update { it.copy(isLoading = true) }
+        runCatching {
+            val devices = resourcesApi.getResources()
+            val server = devices.firstOrNull { it.isServer }
+                ?: error("Aucun serveur Plex trouvé")
+            val url = serverManager.selectBestServerUrl(server)
+                ?: error("Aucune connexion disponible pour ce serveur")
+            serverManager.saveServerUrl(url)
+            _authState.update { it.copy(isAuthenticated = true, isLoading = false) }
+        }.onFailure { e ->
+            _authState.update { it.copy(isLoading = false, error = "Serveur introuvable : ${e.message}") }
         }
     }
 }

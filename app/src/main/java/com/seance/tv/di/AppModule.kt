@@ -40,11 +40,14 @@ object AppModule {
         return OkHttpClient.Builder().addInterceptor(logging).build()
     }
 
-    // Plex client — carries all X-Plex-* headers on every request
+    // Plex client — carries all X-Plex-* headers and rewrites host to the discovered server URL
     @Provides
     @Singleton
     @Named("plex")
-    fun providePlexOkHttpClient(headersInterceptor: PlexHeadersInterceptor): OkHttpClient {
+    fun providePlexOkHttpClient(
+        headersInterceptor: PlexHeadersInterceptor,
+        serverUrlInterceptor: ServerUrlInterceptor
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.HEADERS
                     else HttpLoggingInterceptor.Level.NONE
@@ -52,19 +55,29 @@ object AppModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(headersInterceptor)
+            .addInterceptor(serverUrlInterceptor)
             .addInterceptor(logging)
             .build()
     }
 
     @Provides
     @Singleton
-    fun provideAuthApi(@Named("plain") client: OkHttpClient): PlexAuthApi =
+    fun providePlexTvRetrofit(@Named("plain") client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("https://plex.tv/api/v2/")
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-            .create(PlexAuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(retrofit: Retrofit): PlexAuthApi =
+        retrofit.create(PlexAuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideResourcesApi(retrofit: Retrofit): com.seance.tv.data.api.PlexResourcesApi =
+        retrofit.create(com.seance.tv.data.api.PlexResourcesApi::class.java)
 
     // Default PlexApi — points at localhost until ServerManager updates the real URL.
     // In practice, ServerManager.buildPlexApi() is used to create a correctly-scoped instance.

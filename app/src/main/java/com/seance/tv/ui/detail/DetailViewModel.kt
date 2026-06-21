@@ -17,9 +17,10 @@ data class DetailUiState(
     val seasons: List<MediaItem> = emptyList(),
     val selectedSeason: MediaItem? = null,
     val episodes: List<MediaItem> = emptyList(),
-    val similarItems: List<MediaItem> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val serverUrl: String = "",
+    val token: String = ""
 )
 
 @HiltViewModel
@@ -30,46 +31,23 @@ class DetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DetailUiState())
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
-    fun load(ratingKey: String) {
+    fun load(ratingKey: String, serverUrl: String, token: String) {
+        _uiState.update { it.copy(serverUrl = serverUrl, token = token) }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
-                val item = plexRepository.getMetadata(ratingKey)
-                    ?: error("Média introuvable")
-
+                val item = plexRepository.getMetadata(ratingKey) ?: error("Média introuvable")
                 val children = plexRepository.getChildren(ratingKey)
-
                 when {
                     item.isShow -> {
                         val seasons = children.filter { it.isSeason }
                         val firstSeason = seasons.firstOrNull()
-                        val episodes = firstSeason?.let {
-                            plexRepository.getChildren(it.ratingKey)
-                        } ?: emptyList()
+                        val episodes = firstSeason?.let { plexRepository.getChildren(it.ratingKey) } ?: emptyList()
                         _uiState.update {
-                            it.copy(
-                                item = item,
-                                seasons = seasons,
-                                selectedSeason = firstSeason,
-                                episodes = episodes,
-                                isLoading = false
-                            )
+                            it.copy(item = item, seasons = seasons, selectedSeason = firstSeason, episodes = episodes, isLoading = false)
                         }
                     }
-                    item.isCollection -> {
-                        _uiState.update {
-                            it.copy(
-                                item = item,
-                                similarItems = children,
-                                isLoading = false
-                            )
-                        }
-                    }
-                    else -> {
-                        _uiState.update {
-                            it.copy(item = item, isLoading = false)
-                        }
-                    }
+                    else -> _uiState.update { it.copy(item = item, isLoading = false) }
                 }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -85,5 +63,10 @@ class DetailViewModel @Inject constructor(
                 _uiState.update { it.copy(episodes = episodes) }
             }
         }
+    }
+
+    fun imageUrl(path: String?): String? {
+        val state = _uiState.value
+        return plexRepository.buildImageUrl(path, state.serverUrl, state.token)
     }
 }

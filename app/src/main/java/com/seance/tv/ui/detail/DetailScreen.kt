@@ -54,7 +54,8 @@ fun DetailScreen(
     state: DetailUiState,
     onPlay: (MediaItem) -> Unit,
     onSeasonSelected: (MediaItem) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    imageUrl: (String?) -> String? = { null }
 ) {
     val item = state.item ?: return
 
@@ -62,7 +63,7 @@ fun DetailScreen(
 
         // Blurred background art
         AsyncImage(
-            model = null, // populated via URL builder
+            model = imageUrl(item.art),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -92,7 +93,7 @@ fun DetailScreen(
                         .background(Color(0xFF1C1C1C))
                 ) {
                     AsyncImage(
-                        model = null,
+                        model = imageUrl(item.thumb),
                         contentDescription = item.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()

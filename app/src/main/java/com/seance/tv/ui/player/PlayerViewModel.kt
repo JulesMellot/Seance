@@ -38,6 +38,7 @@ class PlayerViewModel @Inject constructor(
     fun initialize(
         ratingKey: String,
         title: String,
+        streamUrl: String,
         partKey: String?,
         durationMs: Long,
         viewOffsetMs: Long
@@ -46,6 +47,7 @@ class PlayerViewModel @Inject constructor(
             it.copy(
                 ratingKey = ratingKey,
                 title = title,
+                streamUrl = streamUrl,
                 durationMs = durationMs,
                 positionMs = viewOffsetMs,
                 isPlaying = true
