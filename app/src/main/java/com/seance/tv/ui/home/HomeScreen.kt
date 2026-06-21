@@ -1,13 +1,25 @@
 package com.seance.tv.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.tv.material3.Icon
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -37,7 +49,9 @@ import com.seance.tv.ui.theme.Accent
 import com.seance.tv.ui.theme.BackgroundBase
 import com.seance.tv.ui.theme.Dimens
 import com.seance.tv.ui.theme.LoraFontFamily
+import com.seance.tv.ui.theme.Radii
 import com.seance.tv.ui.theme.SoraFontFamily
+import com.seance.tv.ui.theme.Surface
 import com.seance.tv.ui.theme.TextMuted
 import com.seance.tv.ui.theme.TextPrimary
 import androidx.compose.runtime.mutableStateOf
@@ -108,6 +122,14 @@ fun HomeScreen(
         }
     }
 
+    // « Découvrir d'autres choses » : remonter en haut et redonner le focus au hero.
+    LaunchedEffect(uiState.refreshTick) {
+        if (uiState.refreshTick > 0) {
+            listState.animateScrollToItem(0)
+            runCatching { heroFocus.requestFocus() }
+        }
+    }
+
     fun openDetail(item: MediaItem) = onOpenDetail(item.ratingKey)
 
     fun play(item: MediaItem) {
@@ -140,7 +162,7 @@ fun HomeScreen(
                                 buildImageUrl = { viewModel.imageUrl(it) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .fillParentMaxHeight()
+                                    .fillParentMaxHeight(0.82f)   // peek de la 1ère ligne en bas
                                     .onFocusChanged { heroFocused = it.hasFocus }
                             )
                         } else {
@@ -208,10 +230,63 @@ fun HomeScreen(
                         }
                     }
 
-                    item { Spacer(Modifier.height(56.dp)) }
+                    item {
+                        Spacer(Modifier.height(Dimens.rowGap + 8.dp))
+                        DiscoverMoreButton(
+                            accent = accent,
+                            onClick = { viewModel.discoverMore() }
+                        )
+                        Spacer(Modifier.height(56.dp))
+                    }
                 }
             }
         }
+
+        // Fondu en haut : les lignes (et le hero) fondent en remontant au scroll.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .height(72.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0f to BackgroundBase,
+                        1f to Color.Transparent
+                    )
+                )
+        )
+    }
+}
+
+@Composable
+private fun DiscoverMoreButton(accent: Color, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .padding(start = Dimens.safeH)
+            .height(52.dp)
+            .clip(RoundedCornerShape(Radii.pill))
+            .background(if (focused) accent else Surface)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 26.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Refresh,
+            contentDescription = null,
+            tint = if (focused) Color.Black else accent,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = "Découvrir d'autres choses",
+            fontFamily = SoraFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+            color = if (focused) Color.Black else TextPrimary
+        )
     }
 }
 

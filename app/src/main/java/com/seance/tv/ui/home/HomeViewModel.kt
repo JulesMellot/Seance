@@ -25,6 +25,7 @@ data class HomeUiState(
     val featured: List<MediaItem> = emptyList(),  // hero auto-rotatif : reprendre + nouveautés
     val heroIndex: Int = 0,
     val focusedItem: MediaItem? = null,           // pour l'accent dynamique (carte focalisée)
+    val refreshTick: Int = 0,                     // incrémenté à chaque « Découvrir d'autres choses »
     val serverUrl: String = "",
     val authToken: String = ""
 ) {
@@ -42,6 +43,12 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var rotationJob: Job? = null
+
+    // Rangées épinglées (OnDeck/Nouveautés) + réserve (collections/genres) pour le cap + refresh
+    private var pinnedRows: List<HomeRow> = emptyList()
+    private var poolRows: List<HomeRow> = emptyList()
+    private var poolOffset = 0
+    private val visibleCap = 10
 
     init {
         viewModelScope.launch {
@@ -62,8 +69,12 @@ class HomeViewModel @Inject constructor(
                     val featured = interleave(onDeck.take(6), recent.take(6))
                         .distinctBy { it.ratingKey }
                         .take(8)
+                    // Épinglées en tête (Continuer/Nouveautés) ; le reste alimente le cap + refresh.
+                    pinnedRows = rows.filter { it is HomeRow.OnDeck || it is HomeRow.RecentlyAdded }
+                    poolRows = rows.filterNot { it is HomeRow.OnDeck || it is HomeRow.RecentlyAdded }
+                    poolOffset = 0
                     _uiState.update {
-                        it.copy(rows = rows, featured = featured, heroIndex = 0, isLoading = false)
+                        it.copy(rows = computeVisibleRows(), featured = featured, heroIndex = 0, isLoading = false)
                     }
                     startHeroRotation()
                 }
@@ -96,6 +107,25 @@ class HomeViewModel @Inject constructor(
             if (i < b.size) out.add(b[i])
         }
         return out
+    }
+
+    /** Fenêtre visible = rangées épinglées + une tranche de la réserve (cap total). */
+    private fun computeVisibleRows(): List<HomeRow> {
+        if (poolRows.isEmpty()) return pinnedRows
+        val n = (visibleCap - pinnedRows.size).coerceAtLeast(1).coerceAtMost(poolRows.size)
+        val window = (0 until n).map { poolRows[(poolOffset + it) % poolRows.size] }
+        return pinnedRows + window
+    }
+
+    /** « Découvrir d'autres choses » : avance dans la réserve (ou re-mélange si tout tient). */
+    fun discoverMore() {
+        val n = (visibleCap - pinnedRows.size).coerceAtLeast(1)
+        if (poolRows.size <= n) {
+            poolRows = poolRows.shuffled()
+        } else {
+            poolOffset = (poolOffset + n) % poolRows.size
+        }
+        _uiState.update { it.copy(rows = computeVisibleRows(), refreshTick = it.refreshTick + 1) }
     }
 
     fun onItemFocused(item: MediaItem?) {
