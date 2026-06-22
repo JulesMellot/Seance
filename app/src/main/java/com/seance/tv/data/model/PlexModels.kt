@@ -183,6 +183,17 @@ data class MediaItem(
     /** Logo-titre transparent (clearLogo) si le serveur le fournit. */
     val clearLogo: String?
         get() = images.firstOrNull { it.type == "clearLogo" }?.url
+
+    private val firstPart: PlexPart? get() = media.firstOrNull()?.parts?.firstOrNull()
+
+    /** Pistes audio du fichier (streamType 2). */
+    val audioStreams: List<PlexStream> get() = firstPart?.streams?.filter { it.streamType == 2 } ?: emptyList()
+
+    /** Pistes de sous-titres du fichier (streamType 3). */
+    val subtitleStreams: List<PlexStream> get() = firstPart?.streams?.filter { it.streamType == 3 } ?: emptyList()
+
+    /** Vrai dès qu'il y a un choix de pistes à proposer (≥ 2 audio, ou ≥ 1 sous-titre). */
+    val hasTrackChoices: Boolean get() = audioStreams.size > 1 || subtitleStreams.isNotEmpty()
 }
 
 @Serializable
@@ -224,8 +235,42 @@ data class PlexPart(
     val key: String = "",
     val duration: Long? = null,
     val file: String? = null,
-    val size: Long? = null
+    val size: Long? = null,
+    @SerialName("Stream") val streams: List<PlexStream> = emptyList()
 )
+
+/**
+ * Piste d'un fichier (vidéo / audio / sous-titre). streamType : 1 = vidéo, 2 = audio, 3 = sous-titre.
+ */
+@Serializable
+data class PlexStream(
+    val id: Long = 0,
+    @SerialName("streamType") val streamType: Int = 0,
+    val index: Int? = null,
+    val codec: String? = null,
+    val language: String? = null,
+    @SerialName("languageCode") val languageCode: String? = null,
+    @SerialName("languageTag") val languageTag: String? = null,
+    val title: String? = null,
+    @SerialName("displayTitle") val displayTitle: String? = null,
+    @SerialName("extendedDisplayTitle") val extendedDisplayTitle: String? = null,
+    val channels: Int? = null,
+    val selected: Boolean = false,
+    @SerialName("default") val isDefault: Boolean = false,
+    val forced: Boolean = false
+) {
+    /** Libellé lisible : titre Plex enrichi, sinon langue, sinon codec. */
+    val label: String
+        get() = displayTitle?.takeIf { it.isNotBlank() }
+            ?: language?.takeIf { it.isNotBlank() }
+            ?: title?.takeIf { it.isNotBlank() }
+            ?: codec?.uppercase()
+            ?: "Piste $index"
+
+    /** Code langue à transmettre au lecteur (ExoPlayer le normalise). */
+    val playerLanguage: String?
+        get() = languageCode?.takeIf { it.isNotBlank() } ?: languageTag?.takeIf { it.isNotBlank() }
+}
 
 // --- Collections ---
 

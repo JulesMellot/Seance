@@ -24,16 +24,16 @@ A Netflix-grade **Android TV** client for [Plex](https://www.plex.tv/), built wi
 - **On-screen search** — a TV-friendly keyboard with live results across your libraries.
 - **Rich detail pages** — backdrop, logo/tagline, full metadata, cast with photos, seasons & episodes (with stills, progress and summaries), a *More like this* row, and technical specs (resolution / video & audio codecs).
 - **Library selection** — choose which Plex libraries appear on the home and browse screens (handy when you have several movie libraries).
-- **Playback** — Media3 / ExoPlayer with resume support and progress reported back to the server. *(Interim MVP player — a libmpv-based player is planned, see Roadmap.)*
+- **Playback** — Media3 / ExoPlayer with resume support and progress reported back to the server, plus **audio & subtitle track selection** (picked from a *Tracks & subtitles* panel on the detail page, applied via ExoPlayer track selection). *(Interim MVP player — a libmpv-based player is planned, see Roadmap.)*
 
 ## Roadmap
 
 ### Player (interim ExoPlayer → planned libmpv rewrite)
 
-The current player is a minimal MVP. It will be replaced by a **libmpv-based player** for broad codec support. The following are intentionally **deferred until that rewrite** — do not invest in the ExoPlayer player:
+The current player is a minimal MVP. It will be replaced by a **libmpv-based player** for broad codec support. Audio & subtitle track selection have since been wired into the ExoPlayer player; the rest below remains **deferred until that rewrite**:
 
-- [ ] **Subtitles** — track selection + rendering (Plex subtitle streams). *Highest-priority gap.*
-- [ ] **Audio tracks** — multi-language selection (VF / VO).
+- [x] **Subtitles** — track selection (Plex subtitle streams) chosen on the detail page, applied through ExoPlayer `TrackSelectionParameters`; rendered by ExoPlayer for embedded / Direct-Play tracks.
+- [x] **Audio tracks** — multi-language selection (VF / VO) from the detail page's *Tracks & subtitles* panel.
 - [ ] **Transcoding / fallback** — currently Direct Play only (`MediaItem.fromUri`); unsupported codecs show a black screen with no message. Needs a server transcode decision (`/video/:/transcode`).
 - [ ] **Mark watched / unwatched** + correct progress state — progress is always reported as `state="playing"` (never `stopped`), so Plex never cleanly marks an item as finished.
 - [ ] **Next episode / autoplay** — no PlayQueue; nothing happens at the end of an episode.

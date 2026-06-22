@@ -1,6 +1,7 @@
 package com.seance.tv.ui.player
 
 import android.content.Context
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -21,11 +22,35 @@ class VideoPlayer(context: Context) {
         playerView.player = player
     }
 
-    fun play(url: String, startPositionMs: Long = 0L) {
+    fun play(
+        url: String,
+        startPositionMs: Long = 0L,
+        audioLanguage: String? = null,
+        subtitleLanguage: String? = null,
+        subtitlesDisabled: Boolean = false
+    ) {
+        applyTrackPreferences(audioLanguage, subtitleLanguage, subtitlesDisabled)
         val mediaItem = MediaItem.fromUri(url)
         player.setMediaItem(mediaItem, startPositionMs.coerceAtLeast(0L))
         player.prepare()
         player.playWhenReady = true
+    }
+
+    /** Pistes préférées (langue audio / sous-titre) — ExoPlayer normalise les codes langue. */
+    fun applyTrackPreferences(
+        audioLanguage: String?,
+        subtitleLanguage: String?,
+        subtitlesDisabled: Boolean
+    ) {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
+            if (!audioLanguage.isNullOrBlank()) setPreferredAudioLanguage(audioLanguage)
+            if (subtitlesDisabled) {
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            } else {
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                if (!subtitleLanguage.isNullOrBlank()) setPreferredTextLanguage(subtitleLanguage)
+            }
+        }.build()
     }
 
     fun togglePause() {

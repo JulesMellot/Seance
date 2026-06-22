@@ -70,7 +70,13 @@ fun PlayerScreen(
 
     LaunchedEffect(state.streamUrl) {
         if (state.streamUrl.isNotBlank()) {
-            videoPlayer.play(state.streamUrl, state.positionMs)
+            videoPlayer.play(
+                url = state.streamUrl,
+                startPositionMs = state.positionMs,
+                audioLanguage = state.audioLanguage,
+                subtitleLanguage = state.subtitleLanguage,
+                subtitlesDisabled = state.subtitlesDisabled
+            )
         }
     }
 

@@ -309,9 +309,14 @@ private fun SeanceNavHost(navController: NavHostController) {
             DetailScreen(
                 state = state,
                 imageUrl = viewModel::imageUrl,
-                onPlay = { item ->
+                onPlay = { item, audioLang, subLang, subsOff ->
                     val partKey = item.media.firstOrNull()?.parts?.firstOrNull()?.key
-                    launchPlayer(context, item, partKey?.let { viewModel.streamUrl(it) })
+                    launchPlayer(
+                        context, item, partKey?.let { viewModel.streamUrl(it) },
+                        audioLanguage = audioLang,
+                        subtitleLanguage = subLang,
+                        subtitlesDisabled = subsOff
+                    )
                 },
                 onSeasonSelected = viewModel::selectSeason,
                 onItemClick = { navController.navigate(Routes.detail(it.ratingKey)) },
@@ -322,7 +327,14 @@ private fun SeanceNavHost(navController: NavHostController) {
 }
 
 /** Lance le lecteur (Activity plein écran séparée). */
-fun launchPlayer(context: Context, item: MediaItem, streamUrl: String?) {
+fun launchPlayer(
+    context: Context,
+    item: MediaItem,
+    streamUrl: String?,
+    audioLanguage: String? = null,
+    subtitleLanguage: String? = null,
+    subtitlesDisabled: Boolean = false
+) {
     val partKey = item.media.firstOrNull()?.parts?.firstOrNull()?.key
     context.startActivity(
         Intent(context, PlayerActivity::class.java).apply {
@@ -334,6 +346,9 @@ fun launchPlayer(context: Context, item: MediaItem, streamUrl: String?) {
             }
             item.duration?.let { putExtra(PlayerActivity.EXTRA_DURATION, it) }
             item.viewOffset?.let { putExtra(PlayerActivity.EXTRA_VIEW_OFFSET, it) }
+            audioLanguage?.let { putExtra(PlayerActivity.EXTRA_AUDIO_LANG, it) }
+            subtitleLanguage?.let { putExtra(PlayerActivity.EXTRA_SUBTITLE_LANG, it) }
+            if (subtitlesDisabled) putExtra(PlayerActivity.EXTRA_SUBS_OFF, true)
         }
     )
 }

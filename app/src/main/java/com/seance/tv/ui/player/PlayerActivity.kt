@@ -21,6 +21,9 @@ class PlayerActivity : ComponentActivity() {
         const val EXTRA_STREAM_URL = "stream_url"
         const val EXTRA_DURATION = "duration_ms"
         const val EXTRA_VIEW_OFFSET = "view_offset_ms"
+        const val EXTRA_AUDIO_LANG = "audio_lang"
+        const val EXTRA_SUBTITLE_LANG = "subtitle_lang"
+        const val EXTRA_SUBS_OFF = "subs_off"
     }
 
     private val viewModel: PlayerViewModel by viewModels()
@@ -41,10 +44,18 @@ class PlayerActivity : ComponentActivity() {
         val partKey = intent.getStringExtra(EXTRA_PART_KEY)
         val durationMs = intent.getLongExtra(EXTRA_DURATION, 0L)
         val viewOffsetMs = intent.getLongExtra(EXTRA_VIEW_OFFSET, 0L)
+        val audioLang = intent.getStringExtra(EXTRA_AUDIO_LANG)
+        val subtitleLang = intent.getStringExtra(EXTRA_SUBTITLE_LANG)
+        val subsOff = intent.getBooleanExtra(EXTRA_SUBS_OFF, false)
 
         videoPlayer = VideoPlayer(this)
 
-        viewModel.initialize(ratingKey, title, streamUrl, partKey, durationMs, viewOffsetMs)
+        viewModel.initialize(
+            ratingKey, title, streamUrl, partKey, durationMs, viewOffsetMs,
+            audioLanguage = audioLang,
+            subtitleLanguage = subtitleLang,
+            subtitlesDisabled = subsOff
+        )
 
         setContent {
             SeanceTheme {

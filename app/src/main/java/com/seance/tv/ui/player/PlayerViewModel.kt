@@ -22,7 +22,10 @@ data class PlayerUiState(
     val showControls: Boolean = true,
     val streamUrl: String = "",
     val ratingKey: String = "",
-    val mediaKey: String = ""
+    val mediaKey: String = "",
+    val audioLanguage: String? = null,
+    val subtitleLanguage: String? = null,
+    val subtitlesDisabled: Boolean = false
 )
 
 @HiltViewModel
@@ -41,7 +44,10 @@ class PlayerViewModel @Inject constructor(
         streamUrl: String,
         partKey: String?,
         durationMs: Long,
-        viewOffsetMs: Long
+        viewOffsetMs: Long,
+        audioLanguage: String? = null,
+        subtitleLanguage: String? = null,
+        subtitlesDisabled: Boolean = false
     ) {
         _uiState.update {
             it.copy(
@@ -50,7 +56,10 @@ class PlayerViewModel @Inject constructor(
                 streamUrl = streamUrl,
                 durationMs = durationMs,
                 positionMs = viewOffsetMs,
-                isPlaying = true
+                isPlaying = true,
+                audioLanguage = audioLanguage,
+                subtitleLanguage = subtitleLanguage,
+                subtitlesDisabled = subtitlesDisabled
             )
         }
         startProgressReporting(ratingKey)

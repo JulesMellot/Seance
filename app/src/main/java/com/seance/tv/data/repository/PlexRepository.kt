@@ -182,8 +182,13 @@ class PlexRepository @Inject constructor(
     fun buildStreamUrl(partKey: String, serverBaseUrl: String, token: String): String =
         "$serverBaseUrl$partKey?X-Plex-Token=$token"
 
-    fun buildImageUrl(path: String?, serverBaseUrl: String, token: String): String? =
-        path?.let { "$serverBaseUrl$it?X-Plex-Token=$token" }
+    fun buildImageUrl(path: String?, serverBaseUrl: String, token: String): String? {
+        if (path.isNullOrBlank()) return null
+        // Thumbs d'acteurs (et certaines images) arrivent en URL absolue
+        // (metadata-static.plex.tv, tmdb…) : ne pas préfixer le serveur ni le token.
+        if (path.startsWith("http://") || path.startsWith("https://")) return path
+        return "$serverBaseUrl$path?X-Plex-Token=$token"
+    }
 
     fun selectBestConnection(device: PlexDevice): PlexConnection? =
         device.connections
