@@ -18,9 +18,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -48,11 +53,15 @@ fun RowSection(
     accentColor: Color = Accent,
     numbered: Boolean = false,
     active: Boolean = false,
+    firstItemFocusRequester: FocusRequester? = null,
     buildImageUrl: (MediaItem) -> String?,
     onItemClick: (MediaItem) -> Unit,
     onItemFocus: (MediaItem) -> Unit = {}
 ) {
     val cardWidth = if (aspect == CardAspect.PORTRAIT) Dimens.cardPortraitW else Dimens.cardLandscapeW
+
+    // Index de la carte focalisée dans cette rangée → fade des cartes à sa droite.
+    var focusedIndex by remember { mutableIntStateOf(-1) }
 
     // La rangée active grossit légèrement et passe au premier plan ; les autres se ternissent.
     val p by animateFloatAsState(
@@ -99,6 +108,23 @@ fun RowSection(
             horizontalArrangement = Arrangement.spacedBy(if (numbered) 4.dp else Dimens.cardGap)
         ) {
             itemsIndexed(items, key = { _, item -> item.ratingKey }) { index, item ->
+                // Cartes à droite de la sélection : fondu progressif → l'artwork de fond
+                // transparaît à droite (extension immersive du hero).
+                val targetAlpha = if (active && focusedIndex >= 0 && index > focusedIndex) {
+                    (1f - 0.36f * (index - focusedIndex)).coerceAtLeast(0.16f)
+                } else 1f
+                val cardAlpha by animateFloatAsState(
+                    targetValue = targetAlpha,
+                    animationSpec = tween(Motion.medium, easing = Motion.expoOut),
+                    label = "rightFade"
+                )
+                var cardModifier = Modifier
+                    .width(cardWidth)
+                    .graphicsLayer { alpha = cardAlpha }
+                if (index == 0 && firstItemFocusRequester != null) {
+                    cardModifier = cardModifier.focusRequester(firstItemFocusRequester)
+                }
+                val onFocus: () -> Unit = { focusedIndex = index; onItemFocus(item) }
                 if (numbered) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         RankNumeral(index + 1)
@@ -107,9 +133,9 @@ fun RowSection(
                             imageUrl = buildImageUrl(item),
                             aspect = aspect,
                             accentColor = accentColor,
-                            modifier = Modifier.width(cardWidth),
+                            modifier = cardModifier,
                             onClick = { onItemClick(item) },
-                            onFocus = { onItemFocus(item) }
+                            onFocus = onFocus
                         )
                     }
                 } else {
@@ -118,9 +144,9 @@ fun RowSection(
                         imageUrl = buildImageUrl(item),
                         aspect = aspect,
                         accentColor = accentColor,
-                        modifier = Modifier.width(cardWidth),
+                        modifier = cardModifier,
                         onClick = { onItemClick(item) },
-                        onFocus = { onItemFocus(item) }
+                        onFocus = onFocus
                     )
                 }
             }

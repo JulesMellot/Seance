@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,32 +75,23 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val context = LocalContext.current
-    val heroFocus = remember { FocusRequester() }
+    val density = LocalDensity.current
+    val firstCardFocus = remember { FocusRequester() }
     var focusRequested by remember { mutableStateOf(false) }
-    var heroFocused by remember { mutableStateOf(false) }
     var focusedRowIndex by remember { mutableStateOf(-1) }  // index LazyColumn de la rangée active
 
-    // Quand le hero (ses CTA) reçoit le focus, il (re)devient l'item « à la une » et on
-    // recolle les lignes en haut.
-    LaunchedEffect(heroFocused) {
-        if (heroFocused) {
-            viewModel.onItemFocused(null)
-            focusedRowIndex = -1
-            listState.scrollToItem(0)
-        }
-    }
-
-    // La rangée active se recentre verticalement à l'écran. On attend qu'elle soit
-    // mesurée (le focus la fait d'abord apparaître en bord d'écran) avant de centrer.
+    // La rangée focalisée s'ancre en haut de la zone (son titre reste visible), les
+    // précédentes glissent au-dessus. On attend qu'elle soit mesurée avant d'ancrer.
     LaunchedEffect(focusedRowIndex) {
         if (focusedRowIndex < 0) return@LaunchedEffect
+        // Marge haute : le titre de la rangée se pose nettement sous le fondu du haut.
+        val topMargin = with(density) { 12.dp.roundToPx() }
         repeat(12) {
             val info = listState.layoutInfo
             val target = info.visibleItemsInfo.firstOrNull { it.index == focusedRowIndex }
             if (target != null && target.size > 0) {
-                val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2
-                val itemCenter = target.offset + target.size / 2
-                val delta = (itemCenter - viewportCenter).toFloat()
+                val targetTop = info.viewportStartOffset + topMargin
+                val delta = (target.offset - targetTop).toFloat()
                 if (kotlin.math.abs(delta) > 4f) listState.animateScrollBy(delta)
                 return@LaunchedEffect
             }
@@ -117,19 +109,19 @@ fun HomeScreen(
     }
     val accent by animateColorAsState(dynamicAccent, tween(450), label = "accent")
 
-    // Focus initial sur le contenu (bouton Lire du hero), pas sur le rail.
-    LaunchedEffect(uiState.heroItem != null && !uiState.isLoading) {
-        if (uiState.heroItem != null && !uiState.isLoading && !focusRequested) {
-            delay(150)
-            runCatching { heroFocus.requestFocus() }.onSuccess { focusRequested = true }
+    // Focus initial sur la 1ère carte (le hero n'a plus de bouton : on interagit via les cartes).
+    LaunchedEffect(uiState.rows.isNotEmpty() && !uiState.isLoading) {
+        if (uiState.rows.isNotEmpty() && !uiState.isLoading && !focusRequested) {
+            delay(200)
+            runCatching { firstCardFocus.requestFocus() }.onSuccess { focusRequested = true }
         }
     }
 
-    // « Découvrir d'autres choses » : remonter en haut et redonner le focus au hero.
+    // « Découvrir d'autres choses » : remonter en haut et redonner le focus à la 1ère carte.
     LaunchedEffect(uiState.refreshTick) {
         if (uiState.refreshTick > 0) {
             listState.animateScrollToItem(0)
-            runCatching { heroFocus.requestFocus() }
+            runCatching { firstCardFocus.requestFocus() }
         }
     }
 
@@ -147,35 +139,20 @@ fun HomeScreen(
             }
             uiState.error != null && uiState.rows.isEmpty() -> ErrorState(uiState.error!!)
             else -> {
-                // Phase 2 : hero ÉPINGLÉ (toujours visible) qui reflète l'item focalisé,
-                // les lignes scrollent dans la zone du bas.
+                // Hero ÉPINGLÉ (toujours visible) qui reflète l'item focalisé,
+                // les lignes scrollent dans la zone du bas (fond sombre).
                 val displayedHero = uiState.focusedItem ?: uiState.heroItem
                 Column(modifier = Modifier.fillMaxSize()) {
                     if (displayedHero != null) {
-                        val isFeatured = uiState.focusedItem == null
-                        val eyebrow = when {
-                            !isFeatured -> when {
-                                displayedHero.isMovie -> "FILM"
-                                displayedHero.isShow -> "SÉRIE"
-                                else -> "À DÉCOUVRIR"
-                            }
-                            (displayedHero.viewOffset ?: 0) > 0 -> "REPRENDRE"
-                            else -> "À LA UNE"
-                        }
                         HeroSection(
                             item = displayedHero,
                             artUrl = viewModel.imageUrl(displayedHero.art ?: displayedHero.thumb),
                             accent = accent,
-                            eyebrow = eyebrow,
-                            // Les CTA n'agissent que lorsque le hero a le focus → item à la une.
-                            onPlay = { (uiState.heroItem ?: displayedHero).let(::play) },
-                            onDetails = { (uiState.heroItem ?: displayedHero).let(::openDetail) },
-                            playFocusRequester = heroFocus,
+                            showActions = false,   // hero purement informatif : on interagit via les cartes
                             buildImageUrl = { viewModel.imageUrl(it) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fillMaxHeight(0.60f)
-                                .onFocusChanged { heroFocused = it.hasFocus }
                         )
                     }
 
@@ -203,6 +180,7 @@ fun HomeScreen(
                                         aspect = CardAspect.LANDSCAPE,
                                         accentColor = accent,
                                         active = active,
+                                        firstItemFocusRequester = if (index == 0) firstCardFocus else null,
                                         buildImageUrl = { viewModel.imageUrl(it.thumb) },
                                         onItemClick = ::openDetail,
                                         onItemFocus = onFocus
@@ -213,6 +191,7 @@ fun HomeScreen(
                                         aspect = CardAspect.PORTRAIT,
                                         accentColor = accent,
                                         active = active,
+                                        firstItemFocusRequester = if (index == 0) firstCardFocus else null,
                                         buildImageUrl = { viewModel.imageUrl(it.thumb) },
                                         onItemClick = ::openDetail,
                                         onItemFocus = onFocus
@@ -224,6 +203,7 @@ fun HomeScreen(
                                         numbered = true,
                                         accentColor = accent,
                                         active = active,
+                                        firstItemFocusRequester = if (index == 0) firstCardFocus else null,
                                         buildImageUrl = { viewModel.imageUrl(it.thumb) },
                                         onItemClick = ::openDetail,
                                         onItemFocus = onFocus
@@ -234,6 +214,7 @@ fun HomeScreen(
                                         aspect = CardAspect.PORTRAIT,
                                         accentColor = accent,
                                         active = active,
+                                        firstItemFocusRequester = if (index == 0) firstCardFocus else null,
                                         buildImageUrl = { viewModel.imageUrl(it.thumb) },
                                         onItemClick = ::openDetail,
                                         onItemFocus = onFocus
@@ -256,7 +237,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .fillMaxWidth()
-                                .height(44.dp)
+                                .height(28.dp)
                                 .background(
                                     Brush.verticalGradient(
                                         0f to BackgroundBase,

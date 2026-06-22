@@ -51,59 +51,63 @@ fun HeroSection(
     item: MediaItem,
     artUrl: String?,
     accent: Color = Accent,
-    eyebrow: String = "À LA UNE",
-    onPlay: () -> Unit,
-    onDetails: () -> Unit,
+    onPlay: () -> Unit = {},
+    onDetails: () -> Unit = {},
     playFocusRequester: FocusRequester? = null,
+    showActions: Boolean = true,
+    drawBackground: Boolean = true,
     buildImageUrl: (String?) -> String? = { it },
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
 
-        // Fond cinématique — crossfade quand l'élément focalisé change
-        Crossfade(
-            targetState = artUrl,
-            animationSpec = tween(Motion.crossfade, easing = Motion.expoOut),
-            label = "heroArt"
-        ) { url ->
-            if (url != null) {
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(BackgroundBase))
+        // Fond cinématique — crossfade quand l'élément focalisé change.
+        // Désactivable : en mode plein écran, l'artwork est dessiné par HomeScreen.
+        if (drawBackground) {
+            Crossfade(
+                targetState = artUrl,
+                animationSpec = tween(Motion.crossfade, easing = Motion.expoOut),
+                label = "heroArt"
+            ) { url ->
+                if (url != null) {
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(BackgroundBase))
+                }
             }
-        }
 
-        // Scrim horizontal (lisibilité du texte à gauche)
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(0.78f)
-                .align(Alignment.CenterStart)
-                .background(
-                    Brush.horizontalGradient(
-                        0f to BackgroundBase.copy(alpha = 0.97f),
-                        0.55f to BackgroundBase.copy(alpha = 0.55f),
-                        1f to Color.Transparent
+            // Scrim horizontal (lisibilité du texte à gauche)
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.78f)
+                    .align(Alignment.CenterStart)
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to BackgroundBase.copy(alpha = 0.97f),
+                            0.55f to BackgroundBase.copy(alpha = 0.55f),
+                            1f to Color.Transparent
+                        )
                     )
-                )
-        )
-        // Scrim vertical (fond vers le bas, fond app)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.5f to Color.Transparent,
-                        1f to BackgroundBase
+            )
+            // Scrim vertical (fond vers le bas, fond app)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.5f to Color.Transparent,
+                            1f to BackgroundBase
+                        )
                     )
-                )
-        )
+            )
+        }
 
         // Contenu
         Column(
@@ -119,16 +123,6 @@ fun HeroSection(
                 label = "heroText"
             ) { hero ->
                 Column {
-                    Text(
-                        text = eyebrow,
-                        fontFamily = SoraFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                        letterSpacing = 2.5.sp,
-                        color = accent,
-                        modifier = Modifier.padding(bottom = 10.dp)
-                    )
-
                     // Logo-titre transparent si dispo, sinon titre en serif Lora.
                     val logo = hero.clearLogo?.let { buildImageUrl(it) }
                     if (logo != null) {
@@ -175,42 +169,44 @@ fun HeroSection(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            if (showActions) {
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val resume = item.viewOffset != null && item.viewOffset > 0
-                Button(
-                    onClick = onPlay,
-                    modifier = if (playFocusRequester != null) Modifier.focusRequester(playFocusRequester) else Modifier,
-                    colors = ButtonDefaults.colors(
-                        containerColor = accent,
-                        contentColor = Color.Black,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black
-                    )
-                ) {
-                    Text(
-                        text = if (resume) "▶  Reprendre" else "▶  Lire",
-                        fontFamily = SoraFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                }
-                Button(
-                    onClick = onDetails,
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.16f),
-                        contentColor = Color.White,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black
-                    )
-                ) {
-                    Text(
-                        text = "Détails",
-                        fontFamily = SoraFontFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val resume = item.viewOffset != null && item.viewOffset > 0
+                    Button(
+                        onClick = onPlay,
+                        modifier = if (playFocusRequester != null) Modifier.focusRequester(playFocusRequester) else Modifier,
+                        colors = ButtonDefaults.colors(
+                            containerColor = accent,
+                            contentColor = Color.Black,
+                            focusedContainerColor = Color.White,
+                            focusedContentColor = Color.Black
+                        )
+                    ) {
+                        Text(
+                            text = if (resume) "▶  Reprendre" else "▶  Lire",
+                            fontFamily = SoraFontFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Button(
+                        onClick = onDetails,
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color.White.copy(alpha = 0.16f),
+                            contentColor = Color.White,
+                            focusedContainerColor = Color.White,
+                            focusedContentColor = Color.Black
+                        )
+                    ) {
+                        Text(
+                            text = "Détails",
+                            fontFamily = SoraFontFamily,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
         }
